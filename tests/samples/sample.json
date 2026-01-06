@@ -1,0 +1,14 @@
+[
+    {
+        "name": "Alpha",
+        "year": 2022,
+        "type": "Movie"
+    },
+    {
+        "name": "Beta",
+        "year": 2020,
+        "type": "Series",
+        "season": 1,
+        "episode": 2
+    }
+]

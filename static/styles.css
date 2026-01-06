@@ -1,0 +1,556 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, Roboto, 'Segoe UI', Arial;
+    margin: 0;
+    padding: 0;
+}
+
+/* Utility: generic hidden class for toggling visibility */
+.hidden {
+    display: none;
+}
+
+header {
+    background: #0b4a6f;
+    color: white;
+    padding: 16px;
+}
+
+main {
+    padding: 16px;
+}
+
+#controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.controls-left {
+    display: flex;
+    gap: 8px;
+    align-items: center
+}
+
+.controls-right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center
+}
+
+button {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #f6f6f6;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #eaeaea
+}
+
+/* Styled file picker */
+#csv-file-btn {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #0b4a6f;
+    background: #0b4a6f;
+    color: #fff;
+    cursor: pointer;
+}
+
+#csv-file-btn:hover {
+    background: #0a3d58;
+}
+
+/* hide native file inputs visually if present elsewhere */
+input[type="file"] {
+    font-size: 0.9em;
+}
+
+/* small file chooser variant used in settings/setup */
+.file-chooser-btn,
+#import-tmdb-cache-btn,
+#import-confirmed-btn,
+#setup-import-tmdb-cache-btn,
+#setup-import-confirmed-btn,
+#settings-import-tmdb-cache-btn,
+#settings-import-confirmed-btn {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #f6f6f6;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.file-chooser-btn:hover {
+    background: #eaeaea;
+}
+
+#mappings {
+    margin-bottom: 16px;
+}
+
+#rows-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#rows-table th,
+#rows-table td {
+    border: 1px solid #ddd;
+    padding: 6px;
+    text-align: left;
+}
+
+#rows-table th {
+    background: #f3f3f3
+}
+
+.mapping {
+    border: 1px solid #ddd;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+}
+
+.mapping h3 {
+    margin: 0 0 6px 0
+}
+
+.small {
+    font-size: 0.9em;
+    color: #666
+}
+
+/* Mapping layout: left column (select + confirm) and flexible preview */
+.mapping>div {
+    display: block;
+}
+
+.mapping .confirm-btn {
+    padding: 6px 10px;
+}
+
+.mapping .mapping-preview img {
+    border-radius: 4px;
+}
+
+.result-card:hover {
+    background: #fbfbfb
+}
+
+.result-card img {
+    flex: none
+}
+
+.result-card .small {
+    color: #444
+}
+
+.show-all-btn {
+    padding: 6px 8px;
+    margin-top: 8px
+}
+
+/* Toast notifications */
+#toast-container {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1200
+}
+
+.toast {
+    background: #222;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    min-width: 200px
+}
+
+.toast.info {
+    background: #0b4a6f
+}
+
+.toast.warn {
+    background: #b35a00
+}
+
+.toast.error {
+    background: #7a001f
+}
+
+# Confirm modal */ # Make sure confirm modal sits above other modals (settings, mapper) # by using a higher z-index than `#settings-modal` and `#mapper-modal`. # This ensures confirmations appear on top when triggered from Settings. # Confirm modal # (note: avoid colliding with `#toast-container` at z-index:1200) # # Use 1400 to be safely above 1350 used by settings/mapper. # #confirm-modal #-------------------------------- #confirm-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1400;
+}
+
+#confirm-modal.hidden {
+    display: none
+}
+
+.confirm-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4)
+}
+
+.confirm-box {
+    position: relative;
+    background: #fff;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    max-width: 560px;
+    width: 90%
+}
+
+/* API key modal shares styles with confirm modal; ensure proper z-index and inputs */
+/* API key is handled inline in the controls; modal styles removed */
+
+/* Settings modal: hide by default via .hidden and style like other modals */
+#settings-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1350
+}
+
+#settings-modal.hidden {
+    display: none
+}
+
+#settings-modal .confirm-box {
+    max-width: 640px
+}
+
+#settings-modal input[type="password"] {
+    padding: 8px;
+    width: 100%;
+}
+
+/* Mapper modal: hide by default and style like other modals */
+#mapper-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1350;
+}
+
+#mapper-modal.hidden {
+    display: none;
+}
+
+/* Tighter, responsive styling for the mapper modal */
+#mapper-modal .confirm-box {
+    max-width: 980px;
+    width: 94%;
+    max-height: 88vh;
+    overflow: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#mapper-modal .mapper-content {
+    width: 100%;
+}
+
+#mapper-modal .mapper-actions {
+    margin-top: 12px;
+    text-align: right;
+}
+
+/* Allow the injected form to reuse existing field-mapper styles while
+   preventing double borders/backgrounds inside the modal.
+   Also hide the duplicated inner heading that the injected form includes. */
+#mapper-modal .field-mapper-form {
+    background: transparent;
+    border: none;
+    padding: 0;
+    max-width: none;
+}
+
+/* The injected form includes its own <h3>; hide that inside the mapper modal
+   so we only show the modal title once. */
+#mapper-modal .field-mapper-form>h3 {
+    display: none;
+}
+
+/* Make the two-column mapper layout collapse on narrow viewports */
+@media (max-width: 880px) {
+    .fm-layout {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .fm-preview-wrap {
+        width: 100%;
+    }
+
+    .fm-row label {
+        min-width: 140px;
+    }
+}
+
+/* Setup steps visual indicators */
+.setup-steps {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 8px
+}
+
+.setup-steps .step {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #fafafa;
+    border: 1px solid #e6e6e6;
+    color: #333;
+    display: flex;
+    gap: 8px;
+    align-items: center
+}
+
+.setup-steps .step .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ccc
+}
+
+.setup-steps .step.done {
+    background: #e6ffed;
+    border-color: #8bd18b;
+    color: #186a2b
+}
+
+.setup-steps .step.done .dot {
+    background: #2e8b57
+}
+
+/* CSV preview table polish */
+#rows {
+    border: 1px solid #eee;
+    padding: 12px;
+    border-radius: 6px;
+    background: #fff;
+}
+
+#rows-count {
+    margin-bottom: 8px;
+    color: #333
+}
+
+#rows-table tbody tr:nth-child(odd) {
+    background: #fafafa
+}
+
+#rows-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f3f3f3
+}
+
+#rows-table-wrapper {
+    max-height: 360px;
+    overflow: auto;
+    border-radius: 4px
+}
+
+/* Field mapper styles */
+.field-mapper-form {
+    display: grid;
+    gap: 8px;
+    max-width: 900px;
+    background: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e6e6e6;
+}
+
+.fm-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.fm-row label {
+    min-width: 140px;
+    color: #333;
+    flex: 0 0 180px;
+    white-space: nowrap;
+}
+
+.fm-row>div,
+.fm-row input,
+.fm-row select,
+.fm-row .fm-input {
+    flex: 1 1 260px;
+    min-width: 120px;
+}
+
+.fm-select {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    min-width: 220px;
+}
+
+.fm-input {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    min-width: 280px;
+}
+
+.fm-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px
+}
+
+.fm-buttons button {
+    padding: 8px 12px
+}
+
+.fm-row details {
+    margin-left: 208px
+}
+
+.type-values-note {
+    color: #444;
+    font-size: 0.95em;
+    margin-left: 208px
+}
+
+/* two-column mapper layout */
+.fm-layout {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start
+}
+
+/* Confirm modal: ensure it is centered and rendered above other modals
+   by using a very high z-index and explicit stacking for backdrop/box.
+*/
+#confirm-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10050; /* high value to ensure it sits above settings/mapper */
+    pointer-events: auto;
+}
+
+#confirm-modal.hidden {
+    display: none;
+}
+
+/* Backdrop inside the confirm modal should sit just behind the box but
+   above other page content; ensure it covers the viewport. */
+#confirm-modal .confirm-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 10050;
+}
+
+/* The visible confirmation box should be above the backdrop and interactable */
+#confirm-modal .confirm-box {
+    position: relative;
+    background: #fff;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    max-width: 560px;
+    width: 90%;
+    z-index: 10060;
+}
+    display: block;
+    font-weight: 600;
+    margin: 8px 0 4px 0;
+    color: #333;
+}
+
+.fm-type-values .fm-type-control {
+    margin-bottom: 8px;
+}
+
+.fm-type-values .fm-type-input,
+.fm-type-values .fm-type-control select,
+.fm-type-values .fm-select {
+    width: 100%;
+    max-width: 680px;
+    box-sizing: border-box;
+}
+
+@media (min-width: 920px) {
+
+    /* On wide viewports, lay out type field and the two value inputs in a single row */
+    .fm-type-values .fm-type-control,
+    .fm-type-values .fm-type-input {
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    .fm-type-values .fm-type-control {
+        width: 240px;
+        margin-right: 12px;
+    }
+
+    .fm-type-values .fm-type-input {
+        width: calc((100% - 240px - 24px)/2);
+        margin-right: 12px;
+    }
+}
+
+.fm-sample-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px
+}
+
+.fm-sample-table th,
+.fm-sample-table td {
+    border: 1px solid #e8e8e8;
+    padding: 6px;
+    text-align: left
+}
+
+.fm-sample-table th {
+    background: #f3f3f3
+}
+
+@media (max-width: 900px) {
+    .fm-layout {
+        display: block
+    }
+
+    .fm-preview-wrap {
+        width: auto
+    }
+}

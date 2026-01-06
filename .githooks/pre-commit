@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+echo "Running pre-commit checks..."
+SCRIPTDIR=$(dirname "$0")/../scripts
+if [ -x "$SCRIPTDIR/check-js.sh" ]; then
+  "$SCRIPTDIR/check-js.sh" || { echo "JS checks failed; aborting commit."; exit 1; }
+else
+  echo "No JS check script found or not executable; skipping JS checks."
+fi
+exit 0
