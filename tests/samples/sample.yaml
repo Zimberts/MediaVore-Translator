@@ -1,7 +1,0 @@
-- name: YAML Movie
-  type: Movie
-  date: 01/01/2020
-- name: YAML Show
-  type: Serie
-  season: 1
-  episode: 1

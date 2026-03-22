@@ -1,0 +1,53 @@
+import { parseCSV, parseJSON, parseYAML, parseByFilename } from '../parsers';
+
+describe('Parsers', () => {
+  it('should parse CSV correctly', () => {
+    const csv = 'Name,Type,Date\n"My Movie",movie,01/02/2020\n"Other",Serie,03/04/2019';
+    const res = parseCSV(csv);
+    expect(Array.isArray(res.rows)).toBe(true);
+    expect(res.rows.length).toBe(2);
+    expect(res.rows[0].Name).toBe('My Movie');
+    expect(res.rows[1].Type).toBe('Serie');
+  });
+
+  it('should parse JSON correctly', () => {
+    const json = JSON.stringify([{ name: 'A', year: 2021 }, { name: 'B', year: 2020 }]);
+    const res = parseJSON(json);
+    expect(Array.isArray(res.rows)).toBe(true);
+    expect(res.rows.length).toBe(2);
+    expect(res.rows[0].name).toBe('A');
+  });
+
+  it('should parse simple YAML correctly', () => {
+    const yaml = '- name: Foo\n  year: 2018\n- name: Bar\n  year: 2019';
+    const res = parseYAML(yaml);
+    expect(Array.isArray(res.rows)).toBe(true);
+    expect(res.rows.length).toBe(2);
+    expect(res.rows[0].name).toBe('Foo');
+    expect(res.rows[0].year).toBe(2018);
+  });
+
+  it('should detect CSV by filename', () => {
+    const csv = 'Name,Type\nAlpha,movie\nBeta,tv';
+    const rows = parseByFilename('test.csv', csv);
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(2);
+    expect(rows[0].Name).toBe('Alpha');
+  });
+
+  it('should detect JSON by filename', () => {
+    const json = JSON.stringify([{ name: 'A' }]);
+    const rows = parseByFilename('test.json', json);
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(1);
+    expect(rows[0].name).toBe('A');
+  });
+
+  it('should detect YAML by filename', () => {
+    const yaml = '- name: Alpha\n  type: movie';
+    const rows = parseByFilename('test.yml', yaml);
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(1);
+    expect(rows[0].name).toBe('Alpha');
+  });
+});
