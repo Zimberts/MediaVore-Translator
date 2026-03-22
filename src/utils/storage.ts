@@ -76,6 +76,20 @@ export function saveMapping(map: FieldMapping, storage: Storage = window.localSt
   }
 }
 
+export function getFileMappings(): Record<string, FieldMapping> {
+  const data = localStorage.getItem('mediavore_file_mappings');
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch {}
+  }
+  return {};
+}
+
+export function saveFileMappings(mappings: Record<string, FieldMapping>) {
+  localStorage.setItem('mediavore_file_mappings', JSON.stringify(mappings));
+}
+
 export function exportMapping(map: FieldMapping): string {
   return JSON.stringify(
     {

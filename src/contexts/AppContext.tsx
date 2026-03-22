@@ -1,19 +1,20 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { FieldMapping, getMapping, saveMapping } from '../utils/storage';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { FieldMapping, getFileMappings, saveFileMappings } from '../utils/storage';
 import { loadConfirmedMap, saveConfirmedMap, getApiKey, setApiKey } from '../api/tmdb';
 
 interface ParsedFile {
     fileName: string;
     headers: string[];
     rows: Record<string, any>[];
+    category?: string;
 }
 
 interface AppState {
-    parsedFile: ParsedFile | null;
-    setParsedFile: (file: ParsedFile | null) => void;
+    parsedFiles: ParsedFile[];
+    setParsedFiles: (files: ParsedFile[]) => void;
 
-    mapping: FieldMapping;
-    updateMapping: (newMap: FieldMapping) => void;
+    fileMappings: Record<string, FieldMapping>;
+    updateFileMapping: (fileName: string, newMap: FieldMapping) => void;
 
     confirmedMap: Record<string, any>;
     confirmMatch: (title: string, match: any) => void;
@@ -30,8 +31,8 @@ interface AppState {
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
-    const [mapping, setMappingState] = useState<FieldMapping>(getMapping());
+    const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([]);
+    const [fileMappings, setFileMappingsState] = useState<Record<string, FieldMapping>>({});
     const [confirmedMap, setConfirmedMap] = useState<Record<string, any>>(loadConfirmedMap());
     const [apiKey, setApiKeyState] = useState<string>(getApiKey());
 
@@ -39,9 +40,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return localStorage.getItem('mediavore_auto_confirm') === '1';
     });
 
-    const updateMapping = (newMap: FieldMapping) => {
-        saveMapping(newMap);
-        setMappingState(newMap);
+    useEffect(() => {
+        setFileMappingsState(getFileMappings());
+    }, []);
+
+    const updateFileMapping = (fileName: string, newMap: FieldMapping) => {
+        const next = { ...fileMappings, [fileName]: newMap };
+        saveFileMappings(next);
+        setFileMappingsState(next);
     };
 
     const confirmMatch = (title: string, match: any) => {
@@ -77,8 +83,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return (
         <AppContext.Provider value={{
-            parsedFile, setParsedFile,
-            mapping, updateMapping,
+            parsedFiles, setParsedFiles,
+            fileMappings, updateFileMapping,
             confirmedMap, confirmMatch, clearConfirmedMap, importConfirmed,
             apiKey, updateApiKey,
             autoConfirm, setAutoConfirm
