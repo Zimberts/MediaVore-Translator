@@ -4,7 +4,7 @@ import { parseByFilename, parseZipContent } from '../utils/parsers';
 import { FieldMapperModal } from './FieldMapperModal';
 
 export function SetupPanel({ onFinish }: { onFinish: () => void }) {
-    const { parsedFiles, setParsedFiles, fileMappings, updateFileMapping } = useAppContext();
+    const { parsedFiles, setParsedFiles, removeFile, fileMappings, updateFileMapping } = useAppContext();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [mappingFile, setMappingFile] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                             fileName: `${file.name}/${zf.fileName}`,
                             headers: zf.headers,
                             rows: zf.rows,
-                            category: file.name
+                            category: zf.fileName
                         });
                     }
                 } else {
@@ -61,14 +61,6 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
         }
     };
 
-    // Auto-open mapper for the first unmapped file
-    useEffect(() => {
-        if (!mappingFile && parsedFiles.length > 0) {
-            const unmapped = parsedFiles.find(f => !fileMappings[f.fileName]?.title);
-            if (unmapped) setMappingFile(unmapped.fileName);
-        }
-    }, [parsedFiles, fileMappings, mappingFile]);
-
     const isMappingValid = parsedFiles.length > 0 && parsedFiles.every(f => fileMappings[f.fileName]?.title);
 
     return (
@@ -101,11 +93,20 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                 Loaded {parsedFiles.length} file(s):
                                 <ul className="list-disc pl-5 mt-2 space-y-1">
                                     {parsedFiles.map(pf => (
-                                        <li key={pf.fileName}>
-                                            <span className="font-semibold">{pf.fileName}</span> ({pf.rows.length} rows)
-                                            {!fileMappings[pf.fileName]?.title && (
-                                                <span className="ml-2 text-red-500 font-semibold">[Needs Mapping]</span>
-                                            )}
+                                        <li key={pf.fileName} className="flex items-center gap-2">
+                                            <span>
+                                                <span className="font-semibold">{pf.fileName}</span> ({pf.rows.length} rows)
+                                                {!fileMappings[pf.fileName]?.title && (
+                                                    <span className="ml-2 text-red-500 font-semibold">[Needs Mapping]</span>
+                                                )}
+                                            </span>
+                                            <button 
+                                                onClick={() => removeFile(pf.fileName)} 
+                                                className="text-xs text-red-500 hover:text-red-700 bg-red-100 hover:bg-red-200 px-2 py-0.5 rounded transition-colors"
+                                                title={`Remove ${pf.fileName}`}
+                                            >
+                                                Skip / Remove
+                                            </button>
                                         </li>
                                     ))}
                                 </ul>
@@ -141,12 +142,20 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                         ) : (
                                             <div className="text-sm text-red-500 mb-3 font-semibold">No mapping set</div>
                                         )}
-                                        <button
-                                            onClick={() => setMappingFile(file.fileName)}
-                                            className="bg-[#3498db] hover:bg-[#2980b9] text-white px-3 py-1.5 rounded text-sm font-bold cursor-pointer transition-colors"
-                                        >
-                                            {isMapped ? 'Edit Mapping' : 'Configure Mapping'}
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setMappingFile(file.fileName)}
+                                                className="bg-[#3498db] hover:bg-[#2980b9] text-white px-3 py-1.5 rounded text-sm font-bold cursor-pointer transition-colors"
+                                            >
+                                                {isMapped ? 'Edit Mapping' : 'Configure Mapping'}
+                                            </button>
+                                            <button
+                                                onClick={() => removeFile(file.fileName)}
+                                                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded text-sm font-bold cursor-pointer transition-colors"
+                                            >
+                                                Remove File
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}

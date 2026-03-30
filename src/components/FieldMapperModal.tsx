@@ -64,6 +64,59 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                     </div>
 
                     <div className="space-y-4">
+                        <div className="bg-gray-50 p-4 rounded border border-gray-200">
+                            <label className="block text-sm font-bold text-gray-700 mb-1">File Category</label>
+                            <select
+                                className="w-full p-2 border border-gray-300 rounded md:w-1/2 mb-3"
+                                value={localMap.category || ''} onChange={e => setLocalMap({ ...localMap, category: e.target.value })}
+                            >
+                                <option value="">-- Auto-detect --</option>
+                                <option value="seen">Seen / History</option>
+                                <option value="likes">Likes / Favorites</option>
+                                <option value="watchlist">Watchlist</option>
+                                <option value="lists">Custom List(s)</option>
+                            </select>
+                            
+                            {(localMap.category === 'lists' || !localMap.category) && (
+                                <div className="mt-4 border-t border-gray-200 pt-3">
+                                    <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                                            checked={localMap.isMultiList || false}
+                                            onChange={e => setLocalMap({ ...localMap, isMultiList: e.target.checked })}
+                                        />
+                                        <span className="font-bold text-gray-700">File contains multiple distinct lists</span>
+                                    </label>
+
+                                    {localMap.isMultiList && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-1">List Name Column</label>
+                                                <select
+                                                    className="w-full p-2 border border-gray-300 rounded"
+                                                    value={localMap.listNameColumn || ''} onChange={e => setLocalMap({ ...localMap, listNameColumn: e.target.value })}
+                                                >
+                                                    <option value="">-- Required for Multi-List --</option>
+                                                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-1">List to treat as 'Likes' (Optional)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. Favorites, Loved"
+                                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    value={localMap.likesListName || ''}
+                                                    onChange={e => setLocalMap({ ...localMap, likesListName: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Title (Required)</label>

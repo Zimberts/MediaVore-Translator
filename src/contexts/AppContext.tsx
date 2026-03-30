@@ -12,6 +12,7 @@ interface ParsedFile {
 interface AppState {
     parsedFiles: ParsedFile[];
     setParsedFiles: (files: ParsedFile[]) => void;
+    removeFile: (fileName: string) => void;
 
     fileMappings: Record<string, FieldMapping>;
     updateFileMapping: (fileName: string, newMap: FieldMapping) => void;
@@ -50,6 +51,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFileMappingsState(next);
     };
 
+    const removeFile = (fileName: string) => {
+        setParsedFiles(prev => prev.filter(f => f.fileName !== fileName));
+        const nextMappings = { ...fileMappings };
+        delete nextMappings[fileName];
+        saveFileMappings(nextMappings);
+        setFileMappingsState(nextMappings);
+    };
+
     const confirmMatch = (title: string, match: any) => {
         setConfirmedMap(prev => {
             const next = { ...prev, [title]: match };
@@ -83,7 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return (
         <AppContext.Provider value={{
-            parsedFiles, setParsedFiles,
+            parsedFiles, setParsedFiles, removeFile,
             fileMappings, updateFileMapping,
             confirmedMap, confirmMatch, clearConfirmedMap, importConfirmed,
             apiKey, updateApiKey,

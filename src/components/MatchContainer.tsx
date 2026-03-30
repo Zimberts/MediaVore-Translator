@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
 import { useAppContext } from '../contexts/AppContext';
 import { TitleCard } from './TitleCard';
 import { TMDBResult, searchTMDB } from '../api/tmdb';
@@ -119,14 +118,15 @@ export function MatchContainer() {
             const likes: any[] = [];
             const notifications: any[] = [];
             const lists: any[] = [];
-            
+
             let listPositions: Record<string, number> = {};
 
             parsedFiles.forEach(file => {
-                const category = (file.category || '').toLowerCase();
                 const currentMapping = fileMappings[file.fileName];
                 if (!currentMapping || !currentMapping.title) return;
-                
+
+                const category = (currentMapping.category || file.category || '').toLowerCase();
+
                 file.rows.forEach(row => {
                     const titleRaw = row[currentMapping.title];
                     const titleStr = typeof titleRaw === 'string' ? titleRaw.trim() : '';
@@ -150,10 +150,10 @@ export function MatchContainer() {
                             if (y.length === 4) dateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
                         }
                     } else if (dateStr) {
-                         const time = Date.parse(dateStr);
-                         if (!isNaN(time)) {
-                             dateStr = new Date(time).toISOString();
-                         }
+                        const time = Date.parse(dateStr);
+                        if (!isNaN(time)) {
+                            dateStr = new Date(time).toISOString();
+                        }
                     }
 
                     const tmdbId = confirmed.id;
@@ -166,19 +166,30 @@ export function MatchContainer() {
                     const runtime = '';
                     const genres = '';
 
-                    if (category.includes('like') || category.includes('favorite')) {
+                    let listName = file.category || 'List';
+                    if (currentMapping.isMultiList && currentMapping.listNameColumn && row[currentMapping.listNameColumn]) {
+                        listName = row[currentMapping.listNameColumn];
+                    } else if (currentMapping.category && currentMapping.category !== 'lists') {
+                        listName = currentMapping.category;
+                    }
+
+                    const listNameLower = listName.toLowerCase();
+                    const targetLikesList = (currentMapping.likesListName || '').toLowerCase();
+
+                    if (currentMapping.category === 'likes' || 
+                        category.includes('like') || category.includes('favorite') ||
+                        (currentMapping.isMultiList && targetLikesList && listNameLower === targetLikesList)) {
                         likes.push({ tmdbId, type, title });
-                    } else if (category.includes('watchlist') || category.includes('notify')) {
+                    } else if (currentMapping.category === 'watchlist' || category.includes('watchlist') || category.includes('notify')) {
                         notifications.push({
                             tmdbId, type, title, posterPath, releaseDate, seasonNumber, episodeNumber, autoNotify: 'true'
                         });
-                    } else if (category.includes('seen') || category.includes('diary') || category.includes('history') || category === '') {
+                    } else if (currentMapping.category === 'seen' || category.includes('seen') || category.includes('diary') || category.includes('history') || category === '') {
                         seen.push({
                             tmdbId, type, title, posterPath, seenDate: dateStr, seasonNumber, episodeNumber, runtime, genres
                         });
                     } else {
                         // Place into generic lists
-                        const listName = file.category || 'List';
                         if (!listPositions[listName]) listPositions[listName] = 1;
                         lists.push({
                             listName, tmdbId, type, title, position: listPositions[listName]++
@@ -208,7 +219,15 @@ export function MatchContainer() {
             zip.file('lists.csv', convertToCSV(lists, ['listName', 'tmdbId', 'type', 'title', 'position']));
 
             const content = await zip.generateAsync({ type: 'blob' });
-            saveAs(content, `mediavore_export_${new Date().getTime()}.zip`);
+
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mediavore_export_${new Date().getTime()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
 
         } catch (e) {
             alert("Export failed: " + e);
