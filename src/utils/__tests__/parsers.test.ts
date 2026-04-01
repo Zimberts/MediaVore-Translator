@@ -1,4 +1,5 @@
-import { parseCSV, parseJSON, parseYAML, parseByFilename } from '../parsers';
+import { parseCSV, parseJSON, parseYAML, parseByFilename, parseZipContent } from '../parsers';
+import JSZip from 'jszip';
 
 describe('Parsers', () => {
   it('should parse CSV correctly', () => {
@@ -49,5 +50,29 @@ describe('Parsers', () => {
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].name).toBe('Alpha');
+  });
+
+  it('should parse zip content correctly', async () => {
+    const zip = new JSZip();
+    zip.file('test1.csv', 'Name,Type\nMovie1,movie');
+    zip.file('test2.json', JSON.stringify([{ Name: 'Movie2', Type: 'movie' }]));
+    
+    // JSZip generateAsync can create various formats. Using Blob for browsers
+    // In node environment, we can generate a uint8array and treat it as a Blob
+    const content = await zip.generateAsync({ type: 'uint8array' });
+    const blob = new Blob([content], { type: 'application/zip' });
+    
+    const results = await parseZipContent(blob);
+    expect(results).toHaveLength(2);
+    
+    const csvResult = results.find(r => r.fileName === 'test1.csv');
+    expect(csvResult).toBeDefined();
+    expect(csvResult?.rows[0].Name).toBe('Movie1');
+    expect(csvResult?.headers).toContain('Name');
+
+    const jsonResult = results.find(r => r.fileName === 'test2.json');
+    expect(jsonResult).toBeDefined();
+    expect(jsonResult?.rows[0].Name).toBe('Movie2');
+    expect(jsonResult?.headers).toContain('Name');
   });
 });

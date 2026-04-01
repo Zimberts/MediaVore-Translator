@@ -12,6 +12,10 @@ export interface FieldMapping {
   hasSeries: boolean;
   typeValues: TypeValues | null;
   savedAt: string | null;
+  category?: string;
+  listNameColumn?: string;
+  isMultiList?: boolean;
+  likesListName?: string;
 }
 
 export const defaultFieldMapping: FieldMapping = {
@@ -23,6 +27,10 @@ export const defaultFieldMapping: FieldMapping = {
   hasSeries: false,
   typeValues: { series: 'Serie,TV', movie: 'Movie,Film' },
   savedAt: null,
+  category: '',
+  listNameColumn: '',
+  isMultiList: false,
+  likesListName: '',
 };
 
 function _key(k: string): string {
@@ -48,6 +56,10 @@ export function getMapping(storage: Storage = window.localStorage): FieldMapping
       date: storage.getItem(_key('date')) || '',
       hasSeries: storage.getItem(_key('has_series')) === '1',
       typeValues: tv,
+      category: storage.getItem(_key('category')) || '',
+      listNameColumn: storage.getItem(_key('list_name_column')) || '',
+      isMultiList: storage.getItem(_key('is_multi_list')) === '1',
+      likesListName: storage.getItem(_key('likes_list_name')) || '',
       savedAt: storage.getItem(_key('saved_at')) || storage.getItem('mediavore_field_map_saved_at') || null,
     };
   } catch (e) {
@@ -64,6 +76,10 @@ export function saveMapping(map: FieldMapping, storage: Storage = window.localSt
     storage.setItem(_key('episode'), map.episode || '');
     storage.setItem(_key('date'), map.date || '');
     storage.setItem(_key('has_series'), map.hasSeries ? '1' : '0');
+    storage.setItem(_key('category'), map.category || '');
+    storage.setItem(_key('list_name_column'), map.listNameColumn || '');
+    storage.setItem(_key('is_multi_list'), map.isMultiList ? '1' : '0');
+    storage.setItem(_key('likes_list_name'), map.likesListName || '');
     try {
       storage.setItem(_key('type_values'), JSON.stringify(map.typeValues || null));
     } catch (e) {}
@@ -76,6 +92,20 @@ export function saveMapping(map: FieldMapping, storage: Storage = window.localSt
   }
 }
 
+export function getFileMappings(): Record<string, FieldMapping> {
+  const data = localStorage.getItem('mediavore_file_mappings');
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch {}
+  }
+  return {};
+}
+
+export function saveFileMappings(mappings: Record<string, FieldMapping>) {
+  localStorage.setItem('mediavore_file_mappings', JSON.stringify(mappings));
+}
+
 export function exportMapping(map: FieldMapping): string {
   return JSON.stringify(
     {
@@ -86,6 +116,10 @@ export function exportMapping(map: FieldMapping): string {
       date: map.date || '',
       hasSeries: !!map.hasSeries,
       typeValues: map.typeValues || null,
+      category: map.category || '',
+      listNameColumn: map.listNameColumn || '',
+      isMultiList: !!map.isMultiList,
+      likesListName: map.likesListName || '',
     },
     null,
     2
@@ -102,6 +136,10 @@ export function importMapping(obj: Partial<FieldMapping>, storage: Storage = win
     date: obj.date || '',
     hasSeries: !!obj.hasSeries,
     typeValues: obj.typeValues || defaultFieldMapping.typeValues,
+    category: obj.category || '',
+    listNameColumn: obj.listNameColumn || '',
+    isMultiList: !!obj.isMultiList,
+    likesListName: obj.likesListName || '',
     savedAt: null,
   };
   return saveMapping(map, storage);

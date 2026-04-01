@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
+import { defaultFieldMapping } from '../utils/storage';
 
-export function FieldMapperModal({ onClose }: { onClose: () => void }) {
-    const { parsedFile, mapping, updateMapping } = useAppContext();
-    const headers = parsedFile?.headers || [];
-
-    const [localMap, setLocalMap] = useState({ ...mapping });
-    const sampleRow = parsedFile?.rows?.[0];
+export function FieldMapperModal({ fileName, onClose }: { fileName: string, onClose: () => void }) {
+    const { parsedFiles, fileMappings, updateFileMapping } = useAppContext();
+    const file = parsedFiles.find(f => f.fileName === fileName);
+    const headers = file ? file.headers : [];
+    
+    // We get the current mapping for this specific file, or fallback to default
+    const [localMap, setLocalMap] = useState({ ...(fileMappings[fileName] || defaultFieldMapping) });
+    const sampleRow = file?.rows?.[0];
 
     const handleSave = () => {
-        updateMapping(localMap);
+        updateFileMapping(fileName, localMap);
         onClose();
     };
 
@@ -34,7 +37,7 @@ export function FieldMapperModal({ onClose }: { onClose: () => void }) {
         newMap.date = findMatch(['date', 'seen', 'watched']);
 
         // Auto-detect series presence
-        if (parsedFile?.rows.some(r => r[newMap.season] || r[newMap.episode] || r[newMap.type]?.match(/tv|serie/i))) {
+        if (file?.rows.some((r: any) => r[newMap.season] || r[newMap.episode] || r[newMap.type]?.match(/tv|serie/i))) {
             newMap.hasSeries = true;
         }
 
@@ -45,7 +48,7 @@ export function FieldMapperModal({ onClose }: { onClose: () => void }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
-                    <h2 className="text-xl font-bold m-0 text-gray-800">Map Input Columns</h2>
+                    <h2 className="text-xl font-bold m-0 text-gray-800">Map Input Columns for {fileName}</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800 font-bold text-xl leading-none">&times;</button>
                 </div>
 
@@ -61,6 +64,59 @@ export function FieldMapperModal({ onClose }: { onClose: () => void }) {
                     </div>
 
                     <div className="space-y-4">
+                        <div className="bg-gray-50 p-4 rounded border border-gray-200">
+                            <label className="block text-sm font-bold text-gray-700 mb-1">File Category</label>
+                            <select
+                                className="w-full p-2 border border-gray-300 rounded md:w-1/2 mb-3"
+                                value={localMap.category || ''} onChange={e => setLocalMap({ ...localMap, category: e.target.value })}
+                            >
+                                <option value="">-- Auto-detect --</option>
+                                <option value="seen">Seen / History</option>
+                                <option value="likes">Likes / Favorites</option>
+                                <option value="watchlist">Watchlist</option>
+                                <option value="lists">Custom List(s)</option>
+                            </select>
+                            
+                            {(localMap.category === 'lists' || !localMap.category) && (
+                                <div className="mt-4 border-t border-gray-200 pt-3">
+                                    <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                                            checked={localMap.isMultiList || false}
+                                            onChange={e => setLocalMap({ ...localMap, isMultiList: e.target.checked })}
+                                        />
+                                        <span className="font-bold text-gray-700">File contains multiple distinct lists</span>
+                                    </label>
+
+                                    {localMap.isMultiList && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-1">List Name Column</label>
+                                                <select
+                                                    className="w-full p-2 border border-gray-300 rounded"
+                                                    value={localMap.listNameColumn || ''} onChange={e => setLocalMap({ ...localMap, listNameColumn: e.target.value })}
+                                                >
+                                                    <option value="">-- Required for Multi-List --</option>
+                                                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-1">List to treat as 'Likes' (Optional)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. Favorites, Loved"
+                                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    value={localMap.likesListName || ''}
+                                                    onChange={e => setLocalMap({ ...localMap, likesListName: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Title (Required)</label>

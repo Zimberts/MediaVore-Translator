@@ -1,3 +1,5 @@
+import JSZip from 'jszip';
+
 // Lightweight format parsers
 
 export interface ParsedCSV {
@@ -135,4 +137,26 @@ export function parseByFilename(name: string, text: string): Record<string, any>
 
   const y = parseYAML(text);
   return y.rows || [];
+}
+
+export async function parseZipContent(file: File | Blob): Promise<{ fileName: string, headers: string[], rows: Record<string, any>[] }[]> {
+  const zip = new JSZip();
+  const loadedZip = await zip.loadAsync(file);
+  const results: { fileName: string, headers: string[], rows: Record<string, any>[] }[] = [];
+
+  for (const [path, zipEntry] of Object.entries(loadedZip.files)) {
+    if (!zipEntry.dir) {
+      try {
+        const text = await zipEntry.async('text');
+        const rows = parseByFilename(zipEntry.name, text);
+        if (rows && rows.length > 0) {
+          const headers = Object.keys(rows[0]);
+          results.push({ fileName: path, headers, rows });
+        }
+      } catch (e) {
+        // ignore parsing errors and proceed thoroughly
+      }
+    }
+  }
+  return results;
 }
