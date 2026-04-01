@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { FieldMapping } from './storage';
 
 // Lightweight format parsers
 
@@ -159,4 +160,61 @@ export async function parseZipContent(file: File | Blob): Promise<{ fileName: st
     }
   }
   return results;
+}
+
+export function autoSuggestMapping(
+  headers: string[],
+  rows: any[],
+  totalRowsInAllFiles: Record<string, number>
+): Partial<FieldMapping> {
+  const newMap: Partial<FieldMapping> = {};
+  if (!headers || !headers.length) return newMap;
+
+  const hLower = headers.map(h => h.toLowerCase());
+
+  const findMatch = (patterns: string[]) => {
+      for (const p of patterns) {
+          const idx = hLower.findIndex(h => h.includes(p));
+          if (idx !== -1) return headers[idx];
+      }
+      return '';
+  };
+
+  const assignIfFound = (key: keyof FieldMapping, patterns: string[]) => {
+      const match = findMatch(patterns);
+      if (match) {
+          (newMap as any)[key] = match;
+      }
+  };
+
+  assignIfFound('title', ['title', 'name', 'film', 'movie', 'show', 'titre']);
+  assignIfFound('type', ['type', 'kind', 'media', 'genre']);
+  assignIfFound('season', ['season', 'saison']);
+  assignIfFound('episode', ['episode', 'épisode', 'ep']);
+  assignIfFound('date', ['date', 'seen', 'watched', 'log', 'vu']);
+
+  // Auto-detect series presence
+  if (rows && rows.some((r: any) => r[newMap.season!] || r[newMap.episode!] || (newMap.type && String(r[newMap.type]).match(/tv|serie/i)))) {
+      newMap.hasSeries = true;
+  }
+
+  // Calculate category based on file sizes
+  const rowCount = rows ? rows.length : 0;
+  if (rowCount > 0 && totalRowsInAllFiles) {
+      const allCounts = Object.values(totalRowsInAllFiles);
+      const maxRows = allCounts.length > 0 ? Math.max(...allCounts) : 0;
+
+      // The file with the most rows could be categorized as 'seen' if we don't know elsewhere
+      if (rowCount >= maxRows) {
+          if (newMap.date) {
+            newMap.category = 'seen';
+          } else {
+            newMap.category = 'seen'; // Still prefer seen if it is the largest file
+          }
+      } else {
+          // If it's smaller, might be a watchlist or lists depending on name, but we leave it to manual if ambiguous
+      }
+  }
+
+  return newMap;
 }

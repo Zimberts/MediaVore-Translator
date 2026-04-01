@@ -46,9 +46,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const updateFileMapping = (fileName: string, newMap: FieldMapping) => {
-        const next = { ...fileMappings, [fileName]: newMap };
-        saveFileMappings(next);
-        setFileMappingsState(next);
+        setFileMappingsState(prev => {
+            const next = { ...prev, [fileName]: newMap };
+            saveFileMappings(next);
+            return next;
+        });
     };
 
     const removeFile = (fileName: string) => {

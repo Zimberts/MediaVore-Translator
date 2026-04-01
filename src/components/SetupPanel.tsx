@@ -1,6 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { parseByFilename, parseZipContent } from '../utils/parsers';
+import { parseByFilename, parseZipContent, autoSuggestMapping } from '../utils/parsers';
+import { defaultFieldMapping } from '../utils/storage';
 import { FieldMapperModal } from './FieldMapperModal';
 
 export function SetupPanel({ onFinish }: { onFinish: () => void }) {
@@ -57,6 +58,27 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
 
             // Try to set some default mappings using common strategies for new files!
             const addedFiles = [...parsedFiles, ...newParsedFiles];
+            const totalRowsInAllFiles: Record<string, number> = {};
+
+            // Build map of file sizes (row counts) across all existing and new files
+            for (const file of addedFiles) {
+                totalRowsInAllFiles[file.fileName] = file.rows.length;
+            }
+
+            for (const newFile of newParsedFiles) {
+                const existingMap = fileMappings[newFile.fileName];
+                if (!existingMap || !existingMap.title) {
+                    const suggestion = autoSuggestMapping(newFile.headers, newFile.rows, totalRowsInAllFiles);
+                    const finalMapping = { ...(existingMap || defaultFieldMapping), ...suggestion };
+
+                    updateFileMapping(newFile.fileName, finalMapping as any);
+
+                    if (suggestion.category) {
+                        newFile.category = suggestion.category as string;
+                    }
+                }
+            }
+
             setParsedFiles(addedFiles);
         }
     };
