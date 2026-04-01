@@ -6,7 +6,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
     const { parsedFiles, fileMappings, updateFileMapping } = useAppContext();
     const file = parsedFiles.find(f => f.fileName === fileName);
     const headers = file ? file.headers : [];
-    
+
     // We get the current mapping for this specific file, or fallback to default
     const [localMap, setLocalMap] = useState({ ...(fileMappings[fileName] || defaultFieldMapping) });
     const sampleRow = file?.rows?.[0];
@@ -16,32 +16,8 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
         onClose();
     };
 
-    const autoSuggest = () => {
-        if (!headers.length) return;
-        const newMap = { ...localMap };
-
-        const hLower = headers.map(h => h.toLowerCase());
-
-        const findMatch = (patterns: string[]) => {
-            for (const p of patterns) {
-                const idx = hLower.findIndex(h => h.includes(p));
-                if (idx !== -1) return headers[idx];
-            }
-            return '';
-        };
-
-        newMap.title = findMatch(['title', 'name', 'film', 'movie', 'show']);
-        newMap.type = findMatch(['type', 'kind', 'media']);
-        newMap.season = findMatch(['season']);
-        newMap.episode = findMatch(['episode']);
-        newMap.date = findMatch(['date', 'seen', 'watched']);
-
-        // Auto-detect series presence
-        if (file?.rows.some((r: any) => r[newMap.season] || r[newMap.episode] || r[newMap.type]?.match(/tv|serie/i))) {
-            newMap.hasSeries = true;
-        }
-
-        setLocalMap(newMap);
+    const restoreDefaults = () => {
+        setLocalMap({ ...defaultFieldMapping });
     };
 
     return (
@@ -56,10 +32,10 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                     <div className="mb-6 flex justify-between items-center bg-blue-50 p-3 rounded border border-blue-100">
                         <span className="text-sm text-blue-800">Link your file's columns to the correct fields</span>
                         <button
-                            onClick={autoSuggest}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-bold transition-colors"
+                            onClick={restoreDefaults}
+                            className="bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 px-3 py-1 rounded text-sm font-bold transition-colors"
                         >
-                            Auto-Suggest
+                            Restore Defaults
                         </button>
                     </div>
 
@@ -76,7 +52,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                 <option value="watchlist">Watchlist</option>
                                 <option value="lists">Custom List(s)</option>
                             </select>
-                            
+
                             {(localMap.category === 'lists' || !localMap.category) && (
                                 <div className="mt-4 border-t border-gray-200 pt-3">
                                     <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
