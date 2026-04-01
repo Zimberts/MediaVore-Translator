@@ -14,7 +14,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
         if (files.length === 0) return;
 
         setError(null);
-        
+
         const newParsedFiles: typeof parsedFiles = [];
         let hasError = false;
 
@@ -54,7 +54,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
             setError('No valid data found in selected files.');
         } else {
             if (hasError) setError('Some files failed to parse.');
-            
+
             // Try to set some default mappings using common strategies for new files!
             const addedFiles = [...parsedFiles, ...newParsedFiles];
             setParsedFiles(addedFiles);
@@ -78,7 +78,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                             type="file"
                             ref={fileInputRef}
                             className="hidden"
-                            accept=".csv,.json,.yaml,.yml,.zip"
+                            accept=".csv,.json,.yaml,.yml,.zip,.mdv"
                             multiple
                             onChange={handleFileChange}
                         />
@@ -86,7 +86,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                             onClick={() => fileInputRef.current?.click()}
                             className="bg-[#2ecc71] hover:bg-[#27ae60] text-white px-4 py-2 flex rounded font-bold cursor-pointer transition-colors"
                         >
-                            Choose CSV / JSON / ZIP
+                            Choose CSV / JSON / ZIP / MDV
                         </button>
                         {parsedFiles.length > 0 && (
                             <div className="mt-2 text-sm text-gray-600 bg-gray-100 p-3 rounded inline-block w-full">
@@ -100,8 +100,8 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                                     <span className="ml-2 text-red-500 font-semibold">[Needs Mapping]</span>
                                                 )}
                                             </span>
-                                            <button 
-                                                onClick={() => removeFile(pf.fileName)} 
+                                            <button
+                                                onClick={() => removeFile(pf.fileName)}
                                                 className="text-xs text-red-500 hover:text-red-700 bg-red-100 hover:bg-red-200 px-2 py-0.5 rounded transition-colors"
                                                 title={`Remove ${pf.fileName}`}
                                             >
@@ -123,7 +123,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                             {parsedFiles.map((file) => {
                                 const map = fileMappings[file.fileName];
                                 const isMapped = !!map?.title;
-                                
+
                                 return (
                                     <div key={file.fileName} className="bg-gray-50 border border-gray-200 p-4 rounded-md">
                                         <div className="font-semibold mb-2 text-gray-800 break-all">{file.fileName}</div>

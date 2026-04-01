@@ -176,7 +176,7 @@ export function MatchContainer() {
                     const listNameLower = listName.toLowerCase();
                     const targetLikesList = (currentMapping.likesListName || '').toLowerCase();
 
-                    if (currentMapping.category === 'likes' || 
+                    if (currentMapping.category === 'likes' ||
                         category.includes('like') || category.includes('favorite') ||
                         (currentMapping.isMultiList && targetLikesList && listNameLower === targetLikesList)) {
                         likes.push({ tmdbId, type, title });
@@ -223,7 +223,7 @@ export function MatchContainer() {
             const url = URL.createObjectURL(content);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `mediavore_export_${new Date().getTime()}.zip`;
+            a.download = `mediavore_export_${new Date().getTime()}.mdv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

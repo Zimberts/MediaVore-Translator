@@ -2,12 +2,12 @@
 
 ## Overview
 
-MediaVore uses a single ZIP archive to export/import user data. The archive contains multiple `.csv` files: `seen.csv`, `likes.csv`, `notifications.csv`, `lists.csv`, and a `meta.csv` header with a `version`, `exportedAt` timestamp and `source`.
+MediaVore uses a single ZIP archive to export/import user data, stored with an `.mdv` extension. The archive contains multiple `.csv` files: `seen.csv`, `likes.csv`, `notifications.csv`, `lists.csv`, and a `meta.csv` header with a `version`, `exportedAt` timestamp and `source`.
 
 ## Archive structure
 
 ```
-export.zip
+export.mdv
 ├── meta.csv
 ├── seen.csv
 ├── likes.csv
