@@ -189,7 +189,8 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                                                     <div><span className="font-bold w-20 inline-block">Episode:</span> {preview(map.episode)}</div>
                                                                 </>
                                                             )}
-                                                            <div><span className="font-bold w-20 inline-block">Date:</span> {preview(map.date)}</div>
+                                                            {map.category !== 'lists' && <div><span className="font-bold w-20 inline-block">Date:</span> {preview(map.date)}</div>}
+                                                            {map.category === 'lists' && <div><span className="font-bold w-20 inline-block">Order:</span> {preview(map.order)}</div>}
                                                         </>
                                                     );
                                                 })()}

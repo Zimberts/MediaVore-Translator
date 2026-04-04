@@ -373,14 +373,29 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                         </div>
 
                         <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Date Seen (Optional)</label>
-                            <select
-                                className="w-full p-2 border border-gray-300 rounded md:w-1/2"
-                                value={localMap.date} onChange={e => setLocalMap({ ...localMap, date: e.target.value })}
-                            >
-                                <option value="">-- Optional --</option>
-                                {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                            </select>
+                            {localMap.category === 'lists' ? (
+                                <>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">List Order (Optional)</label>
+                                    <select
+                                        className="w-full p-2 border border-gray-300 rounded md:w-1/2"
+                                        value={localMap.order || ''} onChange={e => setLocalMap({ ...localMap, order: e.target.value })}
+                                    >
+                                        <option value="">-- Optional --</option>
+                                        {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                </>
+                            ) : (
+                                <>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Date Seen (Optional)</label>
+                                    <select
+                                        className="w-full p-2 border border-gray-300 rounded md:w-1/2"
+                                        value={localMap.date} onChange={e => setLocalMap({ ...localMap, date: e.target.value })}
+                                    >
+                                        <option value="">-- Optional --</option>
+                                        {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -401,7 +416,8 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                                     {key === localMap.type && <span className="ml-2 inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">Type</span>}
                                                     {localMap.hasSeries && key === localMap.season && <span className="ml-2 inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Season</span>}
                                                     {localMap.hasSeries && key === localMap.episode && <span className="ml-2 inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Episode</span>}
-                                                    {key === localMap.date && <span className="ml-2 inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">Date</span>}
+                                                    {localMap.category !== 'lists' && key === localMap.date && <span className="ml-2 inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">Date</span>}
+                                                    {localMap.category === 'lists' && key === localMap.order && <span className="ml-2 inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">Order</span>}
                                                     {key === localMap.scrapeUrlColumn && <span className="ml-2 inline-block px-2 py-0.5 bg-gray-200 text-gray-800 rounded text-xs border border-gray-300">URL</span>}
                                                 </td>
                                                 <td className="py-2 text-gray-800 truncate max-w-xs">{String(val || '')}</td>

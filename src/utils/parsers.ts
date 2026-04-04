@@ -13,10 +13,24 @@ export function parseCSV(text: string): ParsedCSV {
   if (!text) return { headers: [], rows: [] };
   const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length === 0) return { headers: [], rows: [] };
-  const headers = splitCSVLine(lines[0]);
+  
+  let headerIndex = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes(',') || lines[i].includes(';')) {
+      headerIndex = i;
+      break;
+    }
+  }
+  
+  const headers = splitCSVLine(lines[headerIndex]);
   const rows: Record<string, any>[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cols = splitCSVLine(lines[i]);
+  
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (headers.length > 1 && !line.includes(',') && !line.includes(';')) continue;
+    if (line === lines[headerIndex]) continue;
+    
+    const cols = splitCSVLine(line);
     if (cols.length === 0) continue;
     const row: Record<string, any> = {};
     for (let j = 0; j < headers.length; j++) {
