@@ -107,25 +107,27 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+                <div className="flex flex-col max-h-[30rem]">
                     <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 mb-3">Input File</h3>
-                    <div className="mb-4">
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept=".csv,.json,.yaml,.yml,.zip,.mdv"
-                            multiple
-                            onChange={handleFileChange}
-                        />
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="bg-[#2ecc71] hover:bg-[#27ae60] text-white px-4 py-2 flex rounded font-bold cursor-pointer transition-colors"
-                        >
-                            Choose CSV / JSON / ZIP / MDV
-                        </button>
+                    <div className="mb-4 flex flex-col flex-1 overflow-hidden">
+                        <div>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept=".csv,.json,.yaml,.yml,.zip,.mdv"
+                                multiple
+                                onChange={handleFileChange}
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-[#2ecc71] hover:bg-[#27ae60] text-white px-4 py-2 flex rounded font-bold cursor-pointer transition-colors"
+                            >
+                                Choose CSV / JSON / ZIP / MDV
+                            </button>
+                        </div>
                         {parsedFiles.length > 0 && (
-                            <div className="mt-2 text-sm text-gray-600 bg-gray-100 p-3 rounded inline-block w-full">
+                            <div className="mt-2 text-sm text-gray-600 bg-gray-100 p-3 rounded w-full flex-1 overflow-y-auto">
                                 Loaded {parsedFiles.length} file(s):
                                 <ul className="list-disc pl-5 mt-2 space-y-1">
                                     {parsedFiles.map(pf => (
@@ -152,10 +154,10 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                     </div>
                 </div>
 
-                <div>
+                <div className="flex flex-col max-h-[30rem]">
                     <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 mb-3">Field Mapping</h3>
                     {parsedFiles.length > 0 ? (
-                        <div className="space-y-4 max-h-[16rem] overflow-y-auto pr-2">
+                        <div className="space-y-4 flex-1 overflow-y-auto pr-2">
                             {parsedFiles.map((file) => {
                                 const map = fileMappings[file.fileName];
                                 const isMapped = !!map?.title || !!map?.scrapeUrlColumn;
