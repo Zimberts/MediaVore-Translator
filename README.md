@@ -46,6 +46,12 @@ This application has been rebuilt using modern web technologies: React, TypeScri
 To build the static application, run:
 `npm run build`
 
+## Documentation
+
+For a deep dive into the project's architecture, APIs, and overall structure, please reference the [docs/README.md](docs/README.md). 
+
+**Rule:** When adding new features or modifying the codebase, documentation must always be updated *first*. Please see the [Workflow Rules in docs/README.md](docs/README.md#development-rules).
+
 ## Project files
 
 - `src/` - React components, hooks, and contexts.
