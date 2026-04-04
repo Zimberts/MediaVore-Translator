@@ -55,6 +55,63 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
 
     const handleSave = () => {
         updateFileMapping(fileName, localMap);
+
+        const getBaseUrlPattern = (url: string | null) => {
+            if (!url) return null;
+            try {
+                const u = new URL(url);
+                const parts = u.pathname.split('/').filter(Boolean);
+                if (parts.length > 0) parts.pop();
+                return u.origin + '/' + parts.join('/');
+            } catch {
+                return null;
+            }
+        };
+
+        const currentSampleUrl = localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn] 
+            ? sampleRow[localMap.scrapeUrlColumn] 
+            : (localMap.scrapeBaseUrl ? localMap.scrapeBaseUrl.replace('{id}', 'sample') : null);
+
+        const currentPattern = getBaseUrlPattern(currentSampleUrl as string);
+
+        if (currentPattern && (localMap.scrapeTitleSelector || localMap.scrapeYearSelector)) {
+            parsedFiles.forEach(pf => {
+                if (pf.fileName === fileName) return;
+                
+                const existingMap = fileMappings[pf.fileName];
+                if (existingMap?.scrapeTitleSelector || existingMap?.scrapeYearSelector) return;
+                
+                const targetRow = pf.rows[0];
+                if (!targetRow) return;
+
+                let targetUrl: string | null = null;
+                if (existingMap?.scrapeUrlColumn && targetRow[existingMap.scrapeUrlColumn]) {
+                    targetUrl = String(targetRow[existingMap.scrapeUrlColumn]);
+                } else if (existingMap?.scrapeBaseUrl) {
+                    targetUrl = existingMap.scrapeBaseUrl.replace('{id}', String(targetRow[existingMap.title || ''] || ''));
+                } else if (localMap.scrapeUrlColumn && targetRow[localMap.scrapeUrlColumn]) {
+                    targetUrl = String(targetRow[localMap.scrapeUrlColumn]);
+                }
+
+                if (targetUrl) {
+                    const targetPattern = getBaseUrlPattern(targetUrl);
+                    if (targetPattern === currentPattern) {
+                        const newMap = existingMap ? { ...existingMap } : { ...defaultFieldMapping };
+                        
+                        if (!newMap.scrapeUrlColumn && !newMap.scrapeBaseUrl) {
+                            newMap.scrapeUrlColumn = localMap.scrapeUrlColumn;
+                            newMap.scrapeBaseUrl = localMap.scrapeBaseUrl;
+                            newMap.isIdMode = localMap.isIdMode;
+                        }
+                        
+                        newMap.scrapeTitleSelector = localMap.scrapeTitleSelector;
+                        newMap.scrapeYearSelector = localMap.scrapeYearSelector;
+                        updateFileMapping(pf.fileName, newMap);
+                    }
+                }
+            });
+        }
+
         onClose();
     };
 
