@@ -5,6 +5,7 @@ export interface TypeValues {
 
 export interface FieldMapping {
   title: string;
+  year?: string;
   type: string;
   season: string;
   episode: string;
@@ -26,6 +27,7 @@ export interface FieldMapping {
 
 export const defaultFieldMapping: FieldMapping = {
   title: '',
+  year: '',
   type: '',
   season: '',
   episode: '',
@@ -62,6 +64,7 @@ export function getMapping(storage: Storage = window.localStorage): FieldMapping
 
     return {
       title: storage.getItem(_key('title')) || '',
+      year: storage.getItem(_key('year')) || '',
       type: storage.getItem(_key('type')) || '',
       season: storage.getItem(_key('season')) || '',
       episode: storage.getItem(_key('episode')) || '',
@@ -89,6 +92,7 @@ export function saveMapping(map: FieldMapping, storage: Storage = window.localSt
   if (!storage) return false;
   try {
     storage.setItem(_key('title'), map.title || '');
+    storage.setItem(_key('year'), map.year || '');
     storage.setItem(_key('type'), map.type || '');
     storage.setItem(_key('season'), map.season || '');
     storage.setItem(_key('episode'), map.episode || '');
@@ -134,6 +138,7 @@ export function exportMapping(map: FieldMapping): string {
   return JSON.stringify(
     {
       title: map.title || '',
+      year: map.year || '',
       type: map.type || '',
       season: map.season || '',
       episode: map.episode || '',
@@ -160,6 +165,7 @@ export function importMapping(obj: Partial<FieldMapping>, storage: Storage = win
   if (!obj) return false;
   const map: FieldMapping = {
     title: obj.title || '',
+    year: obj.year || '',
     type: obj.type || '',
     season: obj.season || '',
     episode: obj.episode || '',

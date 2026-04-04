@@ -148,13 +148,24 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Title or ID (Required)</label>
                                 <select
                                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     value={localMap.title}
                                     onChange={e => setLocalMap({ ...localMap, title: e.target.value })}
+                                >
+                                    <option value="">-- Select Column --</option>
+                                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Year</label>
+                                <select
+                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={localMap.year || ''}
+                                    onChange={e => setLocalMap({ ...localMap, year: e.target.value })}
                                 >
                                     <option value="">-- Select Column --</option>
                                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
@@ -329,6 +340,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                                 <td className="py-2 pr-4 font-semibold text-gray-600 whitespace-nowrap">
                                                     {key}
                                                     {key === localMap.title && <span className="ml-2 inline-block px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">Title</span>}
+                                                    {key === localMap.year && <span className="ml-2 inline-block px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-xs">Year</span>}
                                                     {key === localMap.type && <span className="ml-2 inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">Type</span>}
                                                     {localMap.hasSeries && key === localMap.season && <span className="ml-2 inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Season</span>}
                                                     {localMap.hasSeries && key === localMap.episode && <span className="ml-2 inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Episode</span>}

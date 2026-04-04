@@ -7,6 +7,7 @@ import { scrapeData } from '../api/scrape';
 
 interface MatchItem {
     title: string;
+    year?: string;
     type: string;
     scrapeBaseUrl?: string;
     scrapeTitleSelector?: string;
@@ -21,7 +22,7 @@ export function MatchContainer() {
     const [isExporting, setIsExporting] = useState(false);
     const [titlesList, setTitlesList] = useState<MatchItem[]>([]);
     const [resultsCache, setResultsCache] = useState<Record<string, TMDBResult[] | 'error' | 'scrape_error'>>({});
-    const [customQueries, setCustomQueries] = useState<Record<string, {title: string, year?: string, type: string}>>({});
+    const [customQueries, setCustomQueries] = useState<Record<string, { title: string, year?: string, type: string }>>({});
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const fetchingRef = useRef<Set<string>>(new Set());
@@ -61,7 +62,12 @@ export function MatchContainer() {
                 );
 
                 const typeStr = isTv ? 'tv' : 'movie';
-                const key = `${t}::${typeStr}`;
+                
+                let y = currentMapping.year ? row[currentMapping.year] : undefined;
+                if (y && typeof y === 'number') y = String(y);
+                if (y && typeof y === 'string') y = y.trim();
+
+                const key = y ? `${t}::${y}::${typeStr}` : `${t}::${typeStr}`;
 
                 let scrapeUrl = '';
                 if (currentMapping.scrapeUrlColumn && row[currentMapping.scrapeUrlColumn]) {
@@ -71,6 +77,7 @@ export function MatchContainer() {
                 if (!groups.has(key)) {
                     groups.set(key, {
                         title: t,
+                        year: y,
                         type: typeStr,
                         scrapeBaseUrl: currentMapping.scrapeBaseUrl,
                         scrapeTitleSelector: currentMapping.scrapeTitleSelector,
@@ -98,7 +105,7 @@ export function MatchContainer() {
             const unconfirmedList = titlesList.filter(t => !confirmedMap[t.title]);
             const startIndex = (currentPage - 1) * pageSize;
             const visibleList = unconfirmedList.slice(startIndex, startIndex + pageSize); // only process exactly what's visible
-            
+
             // From that slice, figure out who actually needs a TMDB lookup
             const pending = visibleList.filter(item =>
                 resultsCache[item.title] === undefined && !fetchingRef.current.has(item.title)
@@ -107,15 +114,15 @@ export function MatchContainer() {
             if (pending.length === 0) return;
 
             const batch = pending.slice(0, 5); // Search 5 at a time
-            
+
             batch.forEach(item => fetchingRef.current.add(item.title));
 
             const searchPromises = batch.map(async (item) => {
                 try {
                     let searchTitle = item.title;
-                    let searchYear = undefined;
+                    let searchYear = item.year;
                     let searchType = item.type;
-                    
+
                     if (customQueries[item.title]) {
                         searchTitle = customQueries[item.title].title;
                         searchYear = customQueries[item.title].year;
@@ -132,55 +139,55 @@ export function MatchContainer() {
                                 }
                             }
 
-                        if (url) {
-                            const scraped = await scrapeData(url, item.scrapeTitleSelector || '', item.scrapeYearSelector || '');
-                            if (scraped.title) {
-                                searchTitle = scraped.title;
-                                searchYear = scraped.year;
-                                
-                                setCustomQueries(prev => ({
-                                    ...prev,
-                                    [item.title]: { title: scraped.title || '', year: scraped.year, type: searchType }
-                                }));
-                            } else {
-                                console.warn('Scraping returned no title for url:', url);
+                            if (url) {
+                                const scraped = await scrapeData(url, item.scrapeTitleSelector || '', item.scrapeYearSelector || '');
+                                if (scraped.title) {
+                                    searchTitle = scraped.title;
+                                    searchYear = scraped.year;
+
+                                    setCustomQueries(prev => ({
+                                        ...prev,
+                                        [item.title]: { title: scraped.title || '', year: scraped.year, type: searchType }
+                                    }));
+                                } else {
+                                    console.warn('Scraping returned no title for url:', url);
+                                }
                             }
+                        } catch (err) {
+                            console.error('Failed to scrape for:', item.title, err);
                         }
-                    } catch (err) {
-                        console.error('Failed to scrape for:', item.title, err);
                     }
-                }
 
-                // If after all logic we are still searching for a raw HTTP url, it means scraping failed
-                // or wasn't configured. Don't spam TMDB with URLs, it just fails.
-                if (searchTitle.startsWith('http://') || searchTitle.startsWith('https://')) {
-                    setResultsCache(prev => ({ ...prev, [item.title]: 'scrape_error' }));
-                    return; // exit the promise mapping early, avoiding TMDB fetch
-                }
+                    // If after all logic we are still searching for a raw HTTP url, it means scraping failed
+                    // or wasn't configured. Don't spam TMDB with URLs, it just fails.
+                    if (searchTitle.startsWith('http://') || searchTitle.startsWith('https://')) {
+                        setResultsCache(prev => ({ ...prev, [item.title]: 'scrape_error' }));
+                        return; // exit the promise mapping early, avoiding TMDB fetch
+                    }
 
-                const results = await searchTMDB(searchTitle, searchType, searchYear);
-                
-                setResultsCache(prev => ({ ...prev, [item.title]: results }));
-                if (autoConfirm && results.length === 1) {
-                    confirmMatch(item.title, results[0]);
+                    const results = await searchTMDB(searchTitle, searchType, searchYear);
+
+                    setResultsCache(prev => ({ ...prev, [item.title]: results }));
+                    if (autoConfirm && results.length === 1) {
+                        confirmMatch(item.title, results[0]);
+                    }
+                } catch (e) {
+                    setResultsCache(prev => ({ ...prev, [item.title]: 'error' }));
+                } finally {
+                    fetchingRef.current.delete(item.title);
                 }
-            } catch (e) {
-                setResultsCache(prev => ({ ...prev, [item.title]: 'error' }));
-            } finally {
-                fetchingRef.current.delete(item.title);
+            });
+
+            await Promise.all(searchPromises);
+            if (active && pending.length > 5) {
+                setTimeout(searchNext, 500); // small delay before next batch
             }
-        });
+        };
 
-        await Promise.all(searchPromises);
-        if (active && pending.length > 5) {
-            setTimeout(searchNext, 500); // small delay before next batch
-        }
-    };
+        searchNext();
 
-    searchNext();
-
-    return () => { active = false; };
-}, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries, currentPage, pageSize]);
+        return () => { active = false; };
+    }, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries, currentPage, pageSize]);
 
     useEffect(() => {
         const unconfirmedCount = titlesList.filter(t => !confirmedMap[t.title]).length;
@@ -327,7 +334,7 @@ export function MatchContainer() {
     const confirmedCount = titlesList.filter(t => confirmedMap[t.title]).length;
     const unconfirmedList = titlesList.filter(t => !confirmedMap[t.title]);
     const pendingCount = unconfirmedList.length;
-    
+
     // Pagination logic
     const totalPages = Math.max(1, Math.ceil(unconfirmedList.length / pageSize));
     // Ensure currentPage is valid
@@ -363,8 +370,8 @@ export function MatchContainer() {
                     {unconfirmedList.length > 0 && (
                         <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
                             <label className="text-xs font-bold text-gray-500 uppercase">Items per page:</label>
-                            <select 
-                                value={pageSize} 
+                            <select
+                                value={pageSize}
                                 onChange={(e) => {
                                     setPageSize(Number(e.target.value));
                                     setCurrentPage(1);
@@ -394,7 +401,7 @@ export function MatchContainer() {
                         Showing {startIndex + 1} to {Math.min(startIndex + pageSize, unconfirmedList.length)} of {unconfirmedList.length} items
                     </div>
                     <div className="flex items-center gap-2">
-                        <button 
+                        <button
                             disabled={safeCurrentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold"
@@ -404,7 +411,7 @@ export function MatchContainer() {
                         <span className="text-sm font-bold text-gray-700 px-2">
                             Page {safeCurrentPage} of {totalPages}
                         </span>
-                        <button 
+                        <button
                             disabled={safeCurrentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold"
@@ -424,29 +431,30 @@ export function MatchContainer() {
                             sourceUrl = baseUrl.replace('{id}', encodeURIComponent(item.title));
                         }
                     }
-                    
+
                     return (
                         <TitleCard
                             key={`${item.title}::${item.type}`}
                             item={item}
                             sourceUrl={sourceUrl}
                             results={resultsCache[item.title]}
-                        onConfirm={(match) => confirmMatch(item.title, match)}
-                        customQuery={customQueries[item.title]}
-                        onManualSearch={(newSearch) => {
-                            setCustomQueries(prev => ({ ...prev, [item.title]: newSearch }));
-                            setResultsCache(prev => {
-                                const next = { ...prev };
-                                delete next[item.title];
-                                return next;
-                            });
-                        }}
-                    />
-                )})}
+                            onConfirm={(match) => confirmMatch(item.title, match)}
+                            customQuery={customQueries[item.title]}
+                            onManualSearch={(newSearch) => {
+                                setCustomQueries(prev => ({ ...prev, [item.title]: newSearch }));
+                                setResultsCache(prev => {
+                                    const next = { ...prev };
+                                    delete next[item.title];
+                                    return next;
+                                });
+                            }}
+                        />
+                    )
+                })}
 
                 {unconfirmedList.length > 0 && totalPages > 1 && (
                     <div className="flex items-center justify-center gap-4 bg-white px-4 py-4 rounded-lg border border-gray-200 shadow-sm mt-4">
-                        <button 
+                        <button
                             disabled={safeCurrentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             className="bg-white px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold shadow-sm transition-colors"
@@ -456,7 +464,7 @@ export function MatchContainer() {
                         <span className="text-sm font-bold text-gray-500 uppercase">
                             Page {safeCurrentPage} of {totalPages}
                         </span>
-                        <button 
+                        <button
                             disabled={safeCurrentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             className="bg-white px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold shadow-sm transition-colors"
