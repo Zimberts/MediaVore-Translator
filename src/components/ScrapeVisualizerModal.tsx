@@ -41,6 +41,20 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
         const base = doc.createElement('base');
         base.href = urlObj.origin;
         doc.head.prepend(base);
+
+        doc.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
+            const href = el.getAttribute('href');
+            if (href && href.startsWith('/')) {
+                el.setAttribute('href', urlObj.origin + href);
+            }
+        });
+        
+        doc.querySelectorAll('img').forEach(el => {
+            const src = el.getAttribute('src');
+            if (src && src.startsWith('/')) {
+                el.setAttribute('src', urlObj.origin + src);
+            }
+        });
       } catch(e) {}
 
       // Inject highlight CSS

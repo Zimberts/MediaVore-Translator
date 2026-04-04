@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { defaultFieldMapping } from '../utils/storage';
 import { ScrapeVisualizerModal } from './ScrapeVisualizerModal';
 import { autoSuggestMapping } from '../utils/parsers';
+import { scrapeData } from '../api/scrape';
+
 
 export function FieldMapperModal({ fileName, onClose }: { fileName: string, onClose: () => void }) {
     const { parsedFiles, fileMappings, updateFileMapping } = useAppContext();
@@ -24,6 +26,32 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
     });
     const [showVisualizer, setShowVisualizer] = useState<boolean>(false);
     const sampleRow = file?.rows?.[0];
+
+    const [scrapedPreview, setScrapedPreview] = useState<{title?: string, year?: string}>({});
+    const [isScraping, setIsScraping] = useState(false);
+
+    useEffect(() => {
+        const sampleUrl = localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn] 
+            ? sampleRow[localMap.scrapeUrlColumn] 
+            : (localMap.scrapeBaseUrl ? localMap.scrapeBaseUrl.replace('{id}', String(sampleRow?.[localMap.title || ''])) : null);
+
+        if (!sampleUrl || (!localMap.scrapeTitleSelector && !localMap.scrapeYearSelector)) return;
+
+        const timer = setTimeout(async () => {
+            setIsScraping(true);
+            try {
+                const result = await scrapeData(sampleUrl, localMap.scrapeTitleSelector || '', localMap.scrapeYearSelector || '');
+                setScrapedPreview(result);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setIsScraping(false);
+            }
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [localMap.scrapeUrlColumn, localMap.scrapeBaseUrl, localMap.title, localMap.scrapeTitleSelector, localMap.scrapeYearSelector, sampleRow]);
+
 
     const handleSave = () => {
         updateFileMapping(fileName, localMap);
@@ -214,6 +242,9 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                                     value={localMap.scrapeTitleSelector || ''}
                                                     onChange={e => setLocalMap({ ...localMap, scrapeTitleSelector: e.target.value })}
                                                 />
+                                                <div className="mt-1 text-xs text-gray-500 h-4">
+                                                    {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapeTitleSelector ? <span>Preview: <strong className="text-gray-800">{scrapedPreview.title || 'None'}</strong></span> : null)}
+                                                </div>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-600 mb-1">
@@ -226,6 +257,9 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                                     value={localMap.scrapeYearSelector || ''}
                                                     onChange={e => setLocalMap({ ...localMap, scrapeYearSelector: e.target.value })}
                                                 />
+                                                <div className="mt-1 text-xs text-gray-500 h-4">
+                                                    {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapeYearSelector ? <span>Preview: <strong className="text-gray-800">{scrapedPreview.year || 'None'}</strong></span> : null)}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
