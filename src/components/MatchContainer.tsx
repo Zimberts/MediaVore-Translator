@@ -3,12 +3,25 @@ import JSZip from 'jszip';
 import { useAppContext } from '../contexts/AppContext';
 import { TitleCard } from './TitleCard';
 import { TMDBResult, searchTMDB } from '../api/tmdb';
+import { scrapeData } from '../api/scrape';
+
+interface MatchItem {
+    title: string;
+    type: string;
+    scrapeBaseUrl?: string;
+    scrapeTitleSelector?: string;
+    scrapeYearSelector?: string;
+    isIdMode?: boolean;
+    scrapeSeriesBaseUrl?: string;
+    scrapeUrl?: string;
+}
 
 export function MatchContainer() {
     const { parsedFiles, fileMappings, confirmedMap, confirmMatch, autoConfirm, apiKey } = useAppContext();
     const [isExporting, setIsExporting] = useState(false);
-    const [titlesList, setTitlesList] = useState<{ title: string, type: string }[]>([]);
+    const [titlesList, setTitlesList] = useState<MatchItem[]>([]);
     const [resultsCache, setResultsCache] = useState<Record<string, TMDBResult[] | 'error'>>({});
+    const [customQueries, setCustomQueries] = useState<Record<string, {title: string, year?: string, type: string}>>({});
 
     useEffect(() => {
         setResultsCache(prev => {
@@ -27,13 +40,13 @@ export function MatchContainer() {
     const uniqueGroups = useMemo(() => {
         if (parsedFiles.length === 0) return [];
 
-        const groups = new Map<string, { title: string, type: string }>();
+        const groups = new Map<string, MatchItem>();
         parsedFiles.forEach(file => {
             const currentMapping = fileMappings[file.fileName];
-            if (!currentMapping || !currentMapping.title) return;
+            if (!currentMapping || (!currentMapping.title && !currentMapping.scrapeUrlColumn)) return;
 
             file.rows.forEach(row => {
-                let t = row[currentMapping.title];
+                let t = currentMapping.title ? row[currentMapping.title] : row[currentMapping.scrapeUrlColumn!];
                 if (!t || typeof t !== 'string') return;
                 t = t.trim();
                 if (!t) return;
@@ -47,8 +60,22 @@ export function MatchContainer() {
                 const typeStr = isTv ? 'tv' : 'movie';
                 const key = `${t}::${typeStr}`;
 
+                let scrapeUrl = '';
+                if (currentMapping.scrapeUrlColumn && row[currentMapping.scrapeUrlColumn]) {
+                    scrapeUrl = row[currentMapping.scrapeUrlColumn];
+                }
+
                 if (!groups.has(key)) {
-                    groups.set(key, { title: t, type: typeStr });
+                    groups.set(key, {
+                        title: t,
+                        type: typeStr,
+                        scrapeBaseUrl: currentMapping.scrapeBaseUrl,
+                        scrapeTitleSelector: currentMapping.scrapeTitleSelector,
+                        scrapeYearSelector: currentMapping.scrapeYearSelector,
+                        isIdMode: currentMapping.isIdMode,
+                        scrapeSeriesBaseUrl: currentMapping.scrapeSeriesBaseUrl,
+                        scrapeUrl: scrapeUrl
+                    });
                 }
             });
         });
@@ -64,9 +91,12 @@ export function MatchContainer() {
         let active = true;
 
         const searchNext = async () => {
-            // Find titles not in confirmed map and not in results cache
-            const pending = titlesList.filter(item =>
-                !confirmedMap[item.title] &&
+            // First derive the visible slice of items the user is actually looking at right now
+            const unconfirmedList = titlesList.filter(t => !confirmedMap[t.title]);
+            const visibleList = unconfirmedList.slice(0, 20); // only process exactly what's visible
+            
+            // From that slice, figure out who actually needs a TMDB lookup
+            const pending = visibleList.filter(item =>
                 resultsCache[item.title] === undefined
             );
 
@@ -76,7 +106,47 @@ export function MatchContainer() {
 
             const searchPromises = batch.map(async (item) => {
                 try {
-                    const results = await searchTMDB(item.title, item.type);
+                    let searchTitle = item.title;
+                    let searchYear = undefined;
+                    let searchType = item.type;
+                    
+                    if (customQueries[item.title]) {
+                        searchTitle = customQueries[item.title].title;
+                        searchYear = customQueries[item.title].year;
+                        searchType = customQueries[item.title].type;
+                    } else if (item.scrapeUrl || (item.isIdMode && item.scrapeTitleSelector)) {
+                        try {
+                            let url = '';
+                            if (item.scrapeUrl) {
+                                url = item.scrapeUrl;
+                            } else {
+                                const baseUrl = (item.type === 'tv' && item.scrapeSeriesBaseUrl) ? item.scrapeSeriesBaseUrl : item.scrapeBaseUrl;
+                                if (baseUrl) {
+                                    url = baseUrl.replace('{id}', encodeURIComponent(item.title));
+                                }
+                            }
+
+                            if (url) {
+                                const scraped = await scrapeData(url, item.scrapeTitleSelector || '', item.scrapeYearSelector || '');
+                                if (scraped.title) {
+                                    searchTitle = scraped.title;
+                                    searchYear = scraped.year;
+                                    
+                                    if (active) {
+                                        setCustomQueries(prev => ({
+                                            ...prev,
+                                            [item.title]: { title: scraped.title || '', year: scraped.year, type: searchType }
+                                        }));
+                                    }
+                                    return; // Defer TMDB search to the next effect cycle which uses the new customQuery
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Failed to scrape for:', item.title, err);
+                        }
+                    }
+
+                    const results = await searchTMDB(searchTitle, searchType, searchYear);
                     if (active) {
                         setResultsCache(prev => ({ ...prev, [item.title]: results }));
                         if (autoConfirm && results.length === 1) {
@@ -99,8 +169,7 @@ export function MatchContainer() {
         searchNext();
 
         return () => { active = false; };
-    }, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch]);
-
+    }, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries]);
 
     const handleExport = async () => {
         if (parsedFiles.length === 0) return;
@@ -123,12 +192,12 @@ export function MatchContainer() {
 
             parsedFiles.forEach(file => {
                 const currentMapping = fileMappings[file.fileName];
-                if (!currentMapping || !currentMapping.title) return;
+                if (!currentMapping || (!currentMapping.title && !currentMapping.scrapeUrlColumn)) return;
 
                 const category = (currentMapping.category || file.category || '').toLowerCase();
 
                 file.rows.forEach(row => {
-                    const titleRaw = row[currentMapping.title];
+                    const titleRaw = currentMapping.title ? row[currentMapping.title] : row[currentMapping.scrapeUrlColumn!];
                     const titleStr = typeof titleRaw === 'string' ? titleRaw.trim() : '';
                     if (!titleStr) return;
 
@@ -275,6 +344,15 @@ export function MatchContainer() {
                         item={item}
                         results={resultsCache[item.title]}
                         onConfirm={(match) => confirmMatch(item.title, match)}
+                        customQuery={customQueries[item.title]}
+                        onManualSearch={(newSearch) => {
+                            setCustomQueries(prev => ({ ...prev, [item.title]: newSearch }));
+                            setResultsCache(prev => {
+                                const next = { ...prev };
+                                delete next[item.title];
+                                return next;
+                            });
+                        }}
                     />
                 ))}
 
