@@ -188,6 +188,7 @@ export function autoSuggestMapping(
   };
 
   assignIfFound('title', ['title', 'name', 'film', 'movie', 'show', 'titre']);
+  assignIfFound('year', ['year', 'annee', 'année', 'release']);
   assignIfFound('type', ['type', 'kind', 'media', 'genre']);
   assignIfFound('season', ['season', 'saison']);
   assignIfFound('episode', ['episode', 'épisode', 'ep']);
