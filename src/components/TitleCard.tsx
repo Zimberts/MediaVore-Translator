@@ -5,7 +5,7 @@ interface TitleCardProps {
     onManualSearch?: (newSearch: { title: string, year?: string, type: string }) => void;
     customQuery?: {title: string, year?: string, type: string};
     item: { title: string, type: string };
-    results?: TMDBResult[] | 'error';
+    results?: TMDBResult[] | 'error' | 'scrape_error';
     onConfirm: (match: any) => void;
 }
 
@@ -91,26 +91,34 @@ export function TitleCard({ item, results, onConfirm, onManualSearch, customQuer
             );
         }
 
+        const isUrl = item.title.startsWith('http://') || item.title.startsWith('https://');
+
         return (
-            <div className="flex items-center gap-3">
-                <h3 className="text-xl font-black text-gray-800 m-0">
-                    {currentTitle}
-                    {currentTitle !== item.title && <span className="ml-2 text-xs font-normal text-gray-400">(Original: {item.title})</span>}
-                </h3>
-                <span className={`text-xs uppercase px-2 py-0.5 rounded font-bold ${currentType === 'tv' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                    {currentType}
-                </span>
-                {currentYear && (
-                    <span className="text-xs px-2 py-0.5 rounded font-bold bg-gray-200 text-gray-700">
-                        {currentYear}
+            <div className="flex flex-col gap-1 w-full mr-4">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-black text-gray-800 m-0">
+                        {currentTitle}
+                    </h3>
+                    <span className={`text-xs uppercase px-2 py-0.5 rounded font-bold ${currentType === 'tv' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                        {currentType}
                     </span>
+                    {currentYear && (
+                        <span className="text-xs px-2 py-0.5 rounded font-bold bg-gray-200 text-gray-700">
+                            {currentYear}
+                        </span>
+                    )}
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="p-1 px-2 hover:bg-gray-200 text-gray-400 hover:text-gray-700 rounded text-xs font-bold transition-colors ml-2"
+                    >
+                        Edit Search
+                    </button>
+                </div>
+                {currentTitle !== item.title && (
+                    <div className={`text-gray-400 font-normal ${isUrl ? 'text-[10px] break-all w-full max-w-[500px] opacity-50 hover:opacity-100 transition-opacity cursor-help' : 'text-xs'}`} title={isUrl ? "Original URL" : "Original Title"}>
+                        (Original: {item.title})
+                    </div>
                 )}
-                <button
-                    onClick={() => setIsEditing(true)}
-                    className="p-1 px-2 hover:bg-gray-200 text-gray-400 hover:text-gray-700 rounded text-xs font-bold transition-colors ml-2"
-                >
-                    ✎ Edit Search
-                </button>
             </div>
         );
     };
@@ -134,7 +142,21 @@ export function TitleCard({ item, results, onConfirm, onManualSearch, customQuer
         return (
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                 <div className="w-full mr-4">{renderHeaderTitle()}</div>
-                <p className="text-red-600 text-sm mt-1">Failed to fetch results.</p>
+                <p className="text-red-600 text-sm mt-1 font-bold">Failed to search TMDB results.</p>
+            </div>
+        );
+    }
+
+    if (results === 'scrape_error') {
+        return (
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200 flex justify-between items-center">
+                <div className="w-full mr-4">
+                    {renderHeaderTitle()}
+                    <span className="text-xs uppercase bg-red-200 text-red-800 px-2 py-1 rounded inline-block mt-2 font-bold">
+                        Failed to Scrape Website
+                    </span>
+                    <p className="text-red-600 text-xs mt-1">The URL could not be crawled or no title was found.</p>
+                </div>
             </div>
         );
     }

@@ -24,6 +24,8 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
   const [activeField, setActiveField] = useState<'title' | 'year'>('title');
   const [titleSelector, setTitleSelector] = useState<string>(initialTitleSelector || '');
   const [yearSelector, setYearSelector] = useState<string>(initialYearSelector || '');
+  const [titleValue, setTitleValue] = useState<string>('');
+  const [yearValue, setYearValue] = useState<string>('');
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -32,8 +34,10 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
-      // Remove scripts
+      // Remove scripts to prevent arbitrary fetches
       doc.querySelectorAll('script').forEach((el) => el.remove());
+      doc.querySelectorAll('link[rel="preload"][as="script"]').forEach(el => el.remove());
+      doc.querySelectorAll('link[rel="modulepreload"]').forEach(el => el.remove());
 
       // Inject base URL
       try {
@@ -43,16 +47,26 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
         doc.head.prepend(base);
 
         doc.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
+            el.removeAttribute('crossorigin');
+            el.removeAttribute('integrity');
             const href = el.getAttribute('href');
-            if (href && href.startsWith('/')) {
-                el.setAttribute('href', urlObj.origin + href);
+            if (href) {
+                if (href.startsWith('//')) {
+                    el.setAttribute('href', urlObj.protocol + href);
+                } else if (href.startsWith('/')) {
+                    el.setAttribute('href', urlObj.origin + href);
+                }
             }
         });
         
         doc.querySelectorAll('img').forEach(el => {
             const src = el.getAttribute('src');
-            if (src && src.startsWith('/')) {
-                el.setAttribute('src', urlObj.origin + src);
+            if (src) {
+                if (src.startsWith('//')) {
+                    el.setAttribute('src', urlObj.protocol + src);
+                } else if (src.startsWith('/')) {
+                    el.setAttribute('src', urlObj.origin + src);
+                }
             }
         });
       } catch(e) {}
@@ -133,6 +147,37 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
     }
   };
 
+  const updateLiveValues = (doc: Document) => {
+      try {
+          if (titleSelector) {
+              const el = doc.querySelector(titleSelector);
+              let val = el?.textContent?.trim() || '';
+              // same cleanups as scraper
+              val = val.replace(/ - IMDb$/, '').replace(/ \([^)]+\) - IMDb$/, '').replace(/ - Letterboxd$/, '').replace(/ — The Movie Database \(TMDB\)$/, '').replace(/ — TMDB$/, '').trim();
+              setTitleValue(val);
+          } else {
+              setTitleValue('');
+          }
+      } catch (e) { setTitleValue(''); }
+
+      try {
+          if (yearSelector) {
+              const el = doc.querySelector(yearSelector);
+              const text = el?.textContent?.trim() || '';
+              const match = text.match(/\d{4}/);
+              setYearValue(match ? match[0] : text);
+          } else {
+              setYearValue('');
+          }
+      } catch(e) { setYearValue(''); }
+  };
+
+  useEffect(() => {
+      const doc = iframeRef.current?.contentDocument;
+      if (doc) updateLiveValues(doc);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [htmlContent, titleSelector, yearSelector]);
+
   const handleFetchInfo = async (): Promise<void> => {
     if (!testUrl.trim()) {
       setError('Please enter a valid URL');
@@ -201,6 +246,7 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
     iframeDoc.body.addEventListener('mouseover', handleMouseOver);
     iframeDoc.body.addEventListener('mouseout', handleMouseOut);
     iframeDoc.body.addEventListener('click', handleClick, true);
+    updateLiveValues(iframeDoc);
   };
 
   useEffect(() => {
@@ -286,8 +332,8 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
                     Hover over the fetched webpage and click elements to automatically generate their CSS selectors. 
                 </p>
 
-                <div className={`p-3 rounded border-2 transition-all ${activeField === 'title' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                    <label className="block text-sm font-bold text-gray-800 mb-1">
+                    <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 ${activeField === 'title' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                    <label className="block text-sm font-bold text-gray-800">
                         Title Selector {activeField === 'title' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
                     </label>
                     <input 
@@ -295,12 +341,16 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
                         value={titleSelector} 
                         onChange={e => setTitleSelector(e.target.value)}
                         placeholder="e.g. h1.title"
-                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono"
+                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
+                    <div className="text-xs">
+                        <span className="font-bold text-gray-600">Value: </span>
+                        <span className="text-gray-900 break-words">{titleValue || <span className="text-gray-400 italic">None</span>}</span>
+                    </div>
                 </div>
 
-                <div className={`p-3 rounded border-2 transition-all ${activeField === 'year' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                    <label className="block text-sm font-bold text-gray-800 mb-1">
+                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 ${activeField === 'year' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                    <label className="block text-sm font-bold text-gray-800">
                         Year Selector {activeField === 'year' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
                     </label>
                     <input 
@@ -308,8 +358,12 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
                         value={yearSelector} 
                         onChange={e => setYearSelector(e.target.value)}
                         placeholder="e.g. .release-date"
-                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono"
+                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
+                    <div className="text-xs">
+                        <span className="font-bold text-gray-600">Value: </span>
+                        <span className="text-gray-900 break-words">{yearValue || <span className="text-gray-400 italic">None</span>}</span>
+                    </div>
                 </div>
 
                 <button 
@@ -338,7 +392,7 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
                         srcDoc={htmlContent}
                         onLoad={handleIframeLoad}
                         className="w-full h-full border-none"
-                        sandbox="allow-same-origin allow-scripts allow-popups"
+                        sandbox="allow-same-origin"
                         title="Web Scraper Visualizer"
                     />
                 ) : (
