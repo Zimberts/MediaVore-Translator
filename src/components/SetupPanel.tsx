@@ -67,23 +67,37 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
 
             for (const newFile of newParsedFiles) {
                 const existingMap = fileMappings[newFile.fileName];
-                if (!existingMap || !existingMap.title) {
                     const suggestion = autoSuggestMapping(newFile.headers, newFile.rows, totalRowsInAllFiles);
-                    const finalMapping = { ...(existingMap || defaultFieldMapping), ...suggestion };
+                    
+                    const finalMapping = { 
+                        ...defaultFieldMapping, 
+                        ...suggestion 
+                    };
+                    
+                    if (existingMap) {
+                        for (const key of Object.keys(existingMap)) {
+                            // @ts-ignore
+                            if (existingMap[key] !== '' && existingMap[key] !== null && existingMap[key] !== undefined) {
+                                // @ts-ignore
+                                finalMapping[key] = existingMap[key];
+                            }
+                        }
+                    }
 
                     updateFileMapping(newFile.fileName, finalMapping as any);
 
-                    if (suggestion.category) {
+                    if (existingMap?.category) {
+                        newFile.category = existingMap.category;
+                    } else if (suggestion.category) {
                         newFile.category = suggestion.category as string;
                     }
                 }
-            }
 
             setParsedFiles(addedFiles);
         }
     };
 
-    const isMappingValid = parsedFiles.length > 0 && parsedFiles.every(f => fileMappings[f.fileName]?.title);
+    const isMappingValid = parsedFiles.length > 0 && parsedFiles.every(f => fileMappings[f.fileName]?.title || fileMappings[f.fileName]?.scrapeUrlColumn);
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -118,7 +132,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                         <li key={pf.fileName} className="flex items-center gap-2">
                                             <span>
                                                 <span className="font-semibold">{pf.fileName}</span> ({pf.rows.length} rows)
-                                                {!fileMappings[pf.fileName]?.title && (
+                                                {!fileMappings[pf.fileName]?.title && !fileMappings[pf.fileName]?.scrapeUrlColumn && (
                                                     <span className="ml-2 text-red-500 font-semibold">[Needs Mapping]</span>
                                                 )}
                                             </span>
@@ -144,22 +158,40 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                         <div className="space-y-4 max-h-[16rem] overflow-y-auto pr-2">
                             {parsedFiles.map((file) => {
                                 const map = fileMappings[file.fileName];
-                                const isMapped = !!map?.title;
+                                const isMapped = !!map?.title || !!map?.scrapeUrlColumn;
 
                                 return (
                                     <div key={file.fileName} className="bg-gray-50 border border-gray-200 p-4 rounded-md">
                                         <div className="font-semibold mb-2 text-gray-800 break-all">{file.fileName}</div>
                                         {isMapped ? (
                                             <div className="text-sm space-y-1 mb-3">
-                                                <div><span className="font-bold w-20 inline-block">Title:</span> {map.title}</div>
-                                                <div><span className="font-bold w-20 inline-block">Type:</span> {map.type || <span className="text-gray-400">Not set</span>}</div>
-                                                {map.hasSeries && (
-                                                    <>
-                                                        <div><span className="font-bold w-20 inline-block">Season:</span> {map.season || <span className="text-gray-400">Not set</span>}</div>
-                                                        <div><span className="font-bold w-20 inline-block">Episode:</span> {map.episode || <span className="text-gray-400">Not set</span>}</div>
-                                                    </>
-                                                )}
-                                                <div><span className="font-bold w-20 inline-block">Date:</span> {map.date || <span className="text-gray-400">Not set</span>}</div>
+                                                {(() => {
+                                                    const preview = (col: string | undefined) => {
+                                                        if (!col) return <span className="text-gray-400">Not set</span>;
+                                                        const val = file.rows[0]?.[col];
+                                                        const valStr = typeof val === 'string' ? val : String(val || '');
+                                                        return <span><span className="text-green-700 font-semibold">"{valStr.length > 50 ? valStr.substring(0, 50) + '...' : valStr}"</span> <span className="text-gray-400 text-xs">({col})</span></span>;
+                                                    };
+                                                    return (
+                                                        <>
+                                                            <div><span className="font-bold w-20 inline-block">Title:</span> {preview(map.title)}</div>
+                                                            {(map.scrapeUrlColumn || map.scrapeBaseUrl) && (
+                                                                <div>
+                                                                    <span className="font-bold w-20 inline-block">URL:</span> 
+                                                                    {map.scrapeUrlColumn ? preview(map.scrapeUrlColumn) : <span className="text-gray-600">Base URL matching ID</span>}
+                                                                </div>
+                                                            )}
+                                                            <div><span className="font-bold w-20 inline-block">Type:</span> {preview(map.type)}</div>
+                                                            {map.hasSeries && (
+                                                                <>
+                                                                    <div><span className="font-bold w-20 inline-block">Season:</span> {preview(map.season)}</div>
+                                                                    <div><span className="font-bold w-20 inline-block">Episode:</span> {preview(map.episode)}</div>
+                                                                </>
+                                                            )}
+                                                            <div><span className="font-bold w-20 inline-block">Date:</span> {preview(map.date)}</div>
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         ) : (
                                             <div className="text-sm text-red-500 mb-3 font-semibold">No mapping set</div>

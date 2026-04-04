@@ -105,14 +105,19 @@ function cacheSet(key: string, val: any) {
   saveCache(tmdbCache);
 }
 
-export async function searchTMDB(query: string, type: string): Promise<TMDBResult[]> {
+export async function searchTMDB(query: string, type: string, year?: string): Promise<TMDBResult[]> {
   if (!query || !query.trim()) return [];
   const kind: TMDBType = (type === 'Film' || type === 'movie' || type.toLowerCase().includes('movie') || type.toLowerCase().includes('film')) ? 'movie' : 'tv';
-  const cacheKey = `search:${kind}:${query}`;
+  const cacheKey = `search:${kind}:${query}${year ? ':' + year : ''}`;
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const data = await tmdbFetch(`/search/${kind}`, { query, page: 1, include_adult: false, language: 'en-US' });
+  const searchParams: Record<string, string | number | boolean> = { query, page: 1, include_adult: false, language: 'en-US' };
+  if (year) {
+    if (kind === 'movie') searchParams.year = year;
+    else searchParams.first_air_date_year = year;
+  }
+  const data = await tmdbFetch(`/search/${kind}`, searchParams);
   const results: TMDBResult[] = (data && data.results) ? data.results.map((r: any) => ({
     id: r.id,
     name: r.title || r.name,

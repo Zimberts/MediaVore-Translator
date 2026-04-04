@@ -192,11 +192,12 @@ export function autoSuggestMapping(
   assignIfFound('season', ['season', 'saison']);
   assignIfFound('episode', ['episode', 'épisode', 'ep']);
   assignIfFound('date', ['date', 'seen', 'watched', 'log', 'vu']);
+    assignIfFound('scrapeUrlColumn', ['url', 'uri', 'link', 'lien']);
 
-  // Auto-detect series presence
-  if (rows && rows.some((r: any) => r[newMap.season!] || r[newMap.episode!] || (newMap.type && String(r[newMap.type]).match(/tv|serie/i)))) {
-      newMap.hasSeries = true;
-  }
+    // If an ID-like or URL-like column was found, we should default into ID mode or let the URL fetching trigger
+    if (newMap.scrapeUrlColumn) {
+        newMap.isIdMode = true;
+    }
 
   // Calculate category based on file sizes
   const rowCount = rows ? rows.length : 0;

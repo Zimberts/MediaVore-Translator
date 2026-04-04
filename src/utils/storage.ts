@@ -16,6 +16,12 @@ export interface FieldMapping {
   listNameColumn?: string;
   isMultiList?: boolean;
   likesListName?: string;
+  scrapeBaseUrl?: string;
+  scrapeTitleSelector?: string;
+  scrapeYearSelector?: string;
+  isIdMode?: boolean;
+  scrapeSeriesBaseUrl?: string;
+  scrapeUrlColumn?: string;
 }
 
 export const defaultFieldMapping: FieldMapping = {
@@ -31,6 +37,12 @@ export const defaultFieldMapping: FieldMapping = {
   listNameColumn: '',
   isMultiList: false,
   likesListName: '',
+  scrapeBaseUrl: '',
+  scrapeTitleSelector: '',
+  scrapeYearSelector: '',
+  isIdMode: false,
+  scrapeSeriesBaseUrl: '',
+  scrapeUrlColumn: '',
 };
 
 function _key(k: string): string {
@@ -60,6 +72,12 @@ export function getMapping(storage: Storage = window.localStorage): FieldMapping
       listNameColumn: storage.getItem(_key('list_name_column')) || '',
       isMultiList: storage.getItem(_key('is_multi_list')) === '1',
       likesListName: storage.getItem(_key('likes_list_name')) || '',
+      scrapeBaseUrl: storage.getItem(_key('scrape_base_url')) || '',
+      scrapeTitleSelector: storage.getItem(_key('scrape_title_selector')) || '',
+      scrapeYearSelector: storage.getItem(_key('scrape_year_selector')) || '',
+      isIdMode: storage.getItem(_key('is_id_mode')) === '1',
+      scrapeSeriesBaseUrl: storage.getItem(_key('scrape_series_base_url')) || '',
+      scrapeUrlColumn: storage.getItem(_key('scrape_url_column')) || '',
       savedAt: storage.getItem(_key('saved_at')) || storage.getItem('mediavore_field_map_saved_at') || null,
     };
   } catch (e) {
@@ -80,6 +98,12 @@ export function saveMapping(map: FieldMapping, storage: Storage = window.localSt
     storage.setItem(_key('list_name_column'), map.listNameColumn || '');
     storage.setItem(_key('is_multi_list'), map.isMultiList ? '1' : '0');
     storage.setItem(_key('likes_list_name'), map.likesListName || '');
+    storage.setItem(_key('scrape_base_url'), map.scrapeBaseUrl || '');
+    storage.setItem(_key('scrape_title_selector'), map.scrapeTitleSelector || '');
+    storage.setItem(_key('scrape_year_selector'), map.scrapeYearSelector || '');
+    storage.setItem(_key('is_id_mode'), map.isIdMode ? '1' : '0');
+    storage.setItem(_key('scrape_series_base_url'), map.scrapeSeriesBaseUrl || '');
+    storage.setItem(_key('scrape_url_column'), map.scrapeUrlColumn || '');
     try {
       storage.setItem(_key('type_values'), JSON.stringify(map.typeValues || null));
     } catch (e) {}
@@ -120,6 +144,12 @@ export function exportMapping(map: FieldMapping): string {
       listNameColumn: map.listNameColumn || '',
       isMultiList: !!map.isMultiList,
       likesListName: map.likesListName || '',
+      scrapeBaseUrl: map.scrapeBaseUrl || '',
+      scrapeTitleSelector: map.scrapeTitleSelector || '',
+      scrapeYearSelector: map.scrapeYearSelector || '',
+      isIdMode: !!map.isIdMode,
+      scrapeSeriesBaseUrl: map.scrapeSeriesBaseUrl || '',
+      scrapeUrlColumn: map.scrapeUrlColumn || '',
     },
     null,
     2
@@ -140,6 +170,12 @@ export function importMapping(obj: Partial<FieldMapping>, storage: Storage = win
     listNameColumn: obj.listNameColumn || '',
     isMultiList: !!obj.isMultiList,
     likesListName: obj.likesListName || '',
+    scrapeBaseUrl: obj.scrapeBaseUrl || '',
+    scrapeTitleSelector: obj.scrapeTitleSelector || '',
+    scrapeYearSelector: obj.scrapeYearSelector || '',
+    isIdMode: !!obj.isIdMode,
+    scrapeSeriesBaseUrl: obj.scrapeSeriesBaseUrl || '',
+    scrapeUrlColumn: obj.scrapeUrlColumn || '',
     savedAt: null,
   };
   return saveMapping(map, storage);

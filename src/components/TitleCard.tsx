@@ -1,22 +1,153 @@
-import React, { useState } from 'react';
+import React, { useState, KeyboardEvent } from 'react';
 import { TMDBResult } from '../api/tmdb';
 
 interface TitleCardProps {
+    onManualSearch?: (newSearch: { title: string, year?: string, type: string }) => void;
+    customQuery?: {title: string, year?: string, type: string};
     item: { title: string, type: string };
-    results?: TMDBResult[] | 'error';
+    sourceUrl?: string;
+    results?: TMDBResult[] | 'error' | 'scrape_error';
     onConfirm: (match: any) => void;
 }
 
-export function TitleCard({ item, results, onConfirm }: TitleCardProps) {
+export function TitleCard({ item, results, onConfirm, onManualSearch, customQuery, sourceUrl }: TitleCardProps) {
     const [expanded, setExpanded] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    
+    // Use customQuery values if provided, otherwise fallback to item values
+    const currentTitle = customQuery?.title || item.title;
+    const currentYear = customQuery?.year || '';
+    const currentType = customQuery?.type || item.type;
+
+    const [editTitle, setEditTitle] = useState(currentTitle);
+    const [editYear, setEditYear] = useState(currentYear);
+    const [editType, setEditType] = useState(currentType);
+
+    const handleSearch = () => {
+        if (editTitle.trim()) {
+            if (onManualSearch) {
+                onManualSearch({ title: editTitle.trim(), year: editYear.trim(), type: editType });
+            }
+        }
+        setIsEditing(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') handleSearch();
+        if (e.key === 'Escape') {
+            setEditTitle(currentTitle);
+            setEditYear(currentYear);
+            setEditType(currentType);
+            setIsEditing(false);
+        }
+    };
+
+    const renderHeaderTitle = () => {
+        if (isEditing) {
+            return (
+                <div className="flex-1 flex gap-2 items-center mr-4 w-full">
+                    <input
+                        type="text"
+                        value={editTitle}
+                        onChange={e => setEditTitle(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm font-bold w-full"
+                        placeholder="Title"
+                        autoFocus
+                    />
+                    <input
+                        type="text"
+                        value={editYear}
+                        onChange={e => setEditYear(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="w-20 px-3 py-1.5 border border-gray-300 rounded text-sm placeholder-gray-400"
+                        placeholder="Year"
+                    />
+                    <select
+                        value={editType}
+                        onChange={e => setEditType(e.target.value)}
+                        className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm font-bold bg-white"
+                    >
+                        <option value="movie">Movie</option>
+                        <option value="tv">TV</option>
+                    </select>
+                    <button
+                        onClick={handleSearch}
+                        className="px-4 py-1.5 bg-blue-600 text-white rounded font-bold text-sm shadow-sm hover:bg-blue-700"
+                    >
+                        Search
+                    </button>
+                    <button
+                        onClick={() => {
+                            setEditTitle(currentTitle);
+                            setEditYear(currentYear);
+                            setEditType(currentType);
+                            setIsEditing(false);
+                        }}
+                        className="px-4 py-1.5 text-gray-500 hover:bg-gray-200 rounded font-bold text-sm"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            );
+        }
+
+        const isUrl = item.title.startsWith('http://') || item.title.startsWith('https://');
+
+        return (
+            <div className="flex flex-col gap-1 w-full mr-4">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-black text-gray-800 m-0">
+                        {currentTitle}
+                    </h3>
+                    <span className={`text-xs uppercase px-2 py-0.5 rounded font-bold ${currentType === 'tv' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                        {currentType}
+                    </span>
+                    {currentYear && (
+                        <span className="text-xs px-2 py-0.5 rounded font-bold bg-gray-200 text-gray-700">
+                            {currentYear}
+                        </span>
+                    )}
+                    <button
+                        onClick={() => {
+                            setEditTitle(currentTitle);
+                            setEditYear(currentYear);
+                            setEditType(currentType);
+                            setIsEditing(true);
+                        }}
+                        className="p-1 px-2 hover:bg-gray-200 text-gray-400 hover:text-gray-700 rounded text-xs font-bold transition-colors ml-2"
+                    >
+                        Edit Search
+                    </button>
+                    {(sourceUrl || isUrl) && (
+                        <a 
+                            href={sourceUrl || item.title} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="p-1 px-2 hover:bg-gray-200 text-blue-500 hover:text-blue-700 rounded text-xs font-bold transition-colors flex items-center gap-1"
+                            title="View source page"
+                        >
+                            ↗ View Page
+                        </a>
+                    )}
+                </div>
+                {currentTitle !== item.title && (
+                    <div className={`text-gray-400 font-normal ${isUrl ? 'text-[10px] break-all w-full max-w-[500px] opacity-50 hover:opacity-100 transition-opacity cursor-help' : 'text-xs'}`} title={isUrl ? "Original URL" : "Original Title"}>
+                        (Original: {item.title})
+                    </div>
+                )}
+            </div>
+        );
+    };
+
 
     if (results === undefined) {
         return (
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 animate-pulse flex items-center justify-between">
-                <div>
-                    <h3 className="text-xl font-bold text-gray-800">{item.title}</h3>
+                <div className="w-full mr-4">
+                    {renderHeaderTitle()}
                     <span className="text-xs uppercase bg-gray-200 text-gray-600 px-2 py-1 rounded inline-block mt-2">
-                        Searching {item.type}...
+                        Searching {currentType}...
                     </span>
                 </div>
                 <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
@@ -27,8 +158,22 @@ export function TitleCard({ item, results, onConfirm }: TitleCardProps) {
     if (results === 'error') {
         return (
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                <h3 className="text-xl font-bold text-red-800">{item.title}</h3>
-                <p className="text-red-600 text-sm mt-1">Failed to fetch results.</p>
+                <div className="w-full mr-4">{renderHeaderTitle()}</div>
+                <p className="text-red-600 text-sm mt-1 font-bold">Failed to search TMDB results.</p>
+            </div>
+        );
+    }
+
+    if (results === 'scrape_error') {
+        return (
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200 flex justify-between items-center">
+                <div className="w-full mr-4">
+                    {renderHeaderTitle()}
+                    <span className="text-xs uppercase bg-red-200 text-red-800 px-2 py-1 rounded inline-block mt-2 font-bold">
+                        Failed to Scrape Website
+                    </span>
+                    <p className="text-red-600 text-xs mt-1">The URL could not be crawled or no title was found.</p>
+                </div>
             </div>
         );
     }
@@ -36,8 +181,8 @@ export function TitleCard({ item, results, onConfirm }: TitleCardProps) {
     if (results.length === 0) {
         return (
             <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 flex justify-between items-center">
-                <div>
-                    <h3 className="text-xl font-bold text-orange-900">{item.title}</h3>
+                <div className="w-full mr-4">
+                    {renderHeaderTitle()}
                     <span className="text-xs uppercase bg-orange-200 text-orange-800 px-2 py-1 rounded inline-block mt-2 font-bold">
                         No TMDB Matches
                     </span>
@@ -58,13 +203,8 @@ export function TitleCard({ item, results, onConfirm }: TitleCardProps) {
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 p-3 px-4 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-black text-gray-800 m-0">{item.title}</h3>
-                    <span className={`text-xs uppercase px-2 py-0.5 rounded font-bold ${item.type === 'tv' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {item.type}
-                    </span>
-                </div>
-                <span className="text-sm text-gray-500 font-medium">Found {results.length} results</span>
+                {renderHeaderTitle()}
+                {!isEditing && <span className="text-sm text-gray-500 font-medium whitespace-nowrap">Found {results.length} results</span>}
             </div>
 
             <div className="p-4 space-y-4">
