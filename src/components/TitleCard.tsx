@@ -5,11 +5,12 @@ interface TitleCardProps {
     onManualSearch?: (newSearch: { title: string, year?: string, type: string }) => void;
     customQuery?: {title: string, year?: string, type: string};
     item: { title: string, type: string };
+    sourceUrl?: string;
     results?: TMDBResult[] | 'error' | 'scrape_error';
     onConfirm: (match: any) => void;
 }
 
-export function TitleCard({ item, results, onConfirm, onManualSearch, customQuery }: TitleCardProps) {
+export function TitleCard({ item, results, onConfirm, onManualSearch, customQuery, sourceUrl }: TitleCardProps) {
     const [expanded, setExpanded] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     
@@ -108,11 +109,27 @@ export function TitleCard({ item, results, onConfirm, onManualSearch, customQuer
                         </span>
                     )}
                     <button
-                        onClick={() => setIsEditing(true)}
+                        onClick={() => {
+                            setEditTitle(currentTitle);
+                            setEditYear(currentYear);
+                            setEditType(currentType);
+                            setIsEditing(true);
+                        }}
                         className="p-1 px-2 hover:bg-gray-200 text-gray-400 hover:text-gray-700 rounded text-xs font-bold transition-colors ml-2"
                     >
                         Edit Search
                     </button>
+                    {(sourceUrl || isUrl) && (
+                        <a 
+                            href={sourceUrl || item.title} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="p-1 px-2 hover:bg-gray-200 text-blue-500 hover:text-blue-700 rounded text-xs font-bold transition-colors flex items-center gap-1"
+                            title="View source page"
+                        >
+                            ↗ View Page
+                        </a>
+                    )}
                 </div>
                 {currentTitle !== item.title && (
                     <div className={`text-gray-400 font-normal ${isUrl ? 'text-[10px] break-all w-full max-w-[500px] opacity-50 hover:opacity-100 transition-opacity cursor-help' : 'text-xs'}`} title={isUrl ? "Original URL" : "Original Title"}>

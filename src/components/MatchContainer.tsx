@@ -416,11 +416,21 @@ export function MatchContainer() {
             )}
 
             <div className="grid grid-cols-1 gap-6">
-                {visibleList.map(item => (
-                    <TitleCard
-                        key={`${item.title}::${item.type}`}
-                        item={item}
-                        results={resultsCache[item.title]}
+                {visibleList.map(item => {
+                    let sourceUrl = item.scrapeUrl || '';
+                    if (!sourceUrl) {
+                        const baseUrl = (item.type === 'tv' && item.scrapeSeriesBaseUrl) ? item.scrapeSeriesBaseUrl : item.scrapeBaseUrl;
+                        if (baseUrl) {
+                            sourceUrl = baseUrl.replace('{id}', encodeURIComponent(item.title));
+                        }
+                    }
+                    
+                    return (
+                        <TitleCard
+                            key={`${item.title}::${item.type}`}
+                            item={item}
+                            sourceUrl={sourceUrl}
+                            results={resultsCache[item.title]}
                         onConfirm={(match) => confirmMatch(item.title, match)}
                         customQuery={customQueries[item.title]}
                         onManualSearch={(newSearch) => {
@@ -432,7 +442,7 @@ export function MatchContainer() {
                             });
                         }}
                     />
-                ))}
+                )})}
 
                 {unconfirmedList.length > 0 && totalPages > 1 && (
                     <div className="flex items-center justify-center gap-4 bg-white px-4 py-4 rounded-lg border border-gray-200 shadow-sm mt-4">
