@@ -107,7 +107,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex flex-col max-h-[30rem]">
+                <div className="flex flex-col max-h-[70vh]">
                     <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 mb-3">Input File</h3>
                     <div className="mb-4 flex flex-col flex-1 overflow-hidden">
                         <div>
@@ -154,7 +154,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                     </div>
                 </div>
 
-                <div className="flex flex-col max-h-[30rem]">
+                <div className="flex flex-col max-h-[70vh]">
                     <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 mb-3">Field Mapping</h3>
                     {parsedFiles.length > 0 ? (
                         <div className="space-y-4 flex-1 overflow-y-auto pr-2">
