@@ -5,7 +5,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { MatchContainer } from './components/MatchContainer';
 
 function App() {
-  const { parsedFile } = useAppContext();
+  const { parsedFiles } = useAppContext();
   const [showSettings, setShowSettings] = useState(false);
   const [currentStep, setCurrentStep] = useState<'setup' | 'match'>('setup');
 
@@ -64,9 +64,9 @@ function App() {
           <SetupPanel onFinish={handleFinishSetup} />
         )}
 
-        {currentStep === 'match' && parsedFile && (
+        {currentStep === 'match' && parsedFiles.length > 0 ? (
           <MatchContainer />
-        )}
+        ) : null}
       </main>
 
       <footer className="text-center p-4 text-xs text-gray-500 bg-white border-t border-gray-200 mt-auto">
