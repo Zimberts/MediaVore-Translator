@@ -27,7 +27,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
     const [showVisualizer, setShowVisualizer] = useState<boolean>(false);
     const sampleRow = file?.rows?.[0];
 
-    const [scrapedPreview, setScrapedPreview] = useState<{title?: string, year?: string}>({});
+    const [scrapedPreview, setScrapedPreview] = useState<{title?: string, year?: string, poster?: string, synopsis?: string}>({});
     const [isScraping, setIsScraping] = useState(false);
 
     useEffect(() => {
@@ -35,12 +35,12 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
             ? sampleRow[localMap.scrapeUrlColumn] 
             : (localMap.scrapeBaseUrl ? localMap.scrapeBaseUrl.replace('{id}', String(sampleRow?.[localMap.title || ''])) : null);
 
-        if (!sampleUrl || (!localMap.scrapeTitleSelector && !localMap.scrapeYearSelector)) return;
+        if (!sampleUrl || (!localMap.scrapeTitleSelector && !localMap.scrapeYearSelector && !localMap.scrapePosterSelector && !localMap.scrapeSynopsisSelector)) return;
 
         const timer = setTimeout(async () => {
             setIsScraping(true);
             try {
-                const result = await scrapeData(sampleUrl, localMap.scrapeTitleSelector || '', localMap.scrapeYearSelector || '');
+                const result = await scrapeData(sampleUrl, localMap.scrapeTitleSelector || '', localMap.scrapeYearSelector || '', localMap.scrapePosterSelector, localMap.scrapeSynopsisSelector);
                 setScrapedPreview(result);
             } catch (e) {
                 console.error(e);
@@ -50,7 +50,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
         }, 800);
 
         return () => clearTimeout(timer);
-    }, [localMap.scrapeUrlColumn, localMap.scrapeBaseUrl, localMap.title, localMap.scrapeTitleSelector, localMap.scrapeYearSelector, sampleRow]);
+    }, [localMap.scrapeUrlColumn, localMap.scrapeBaseUrl, localMap.title, localMap.scrapeTitleSelector, localMap.scrapeYearSelector, localMap.scrapePosterSelector, localMap.scrapeSynopsisSelector, sampleRow]);
 
 
     const handleSave = () => {
@@ -74,12 +74,12 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
 
         const currentPattern = getBaseUrlPattern(currentSampleUrl as string);
 
-        if (currentPattern && (localMap.scrapeTitleSelector || localMap.scrapeYearSelector)) {
+        if (currentPattern && (localMap.scrapeTitleSelector || localMap.scrapeYearSelector || localMap.scrapePosterSelector || localMap.scrapeSynopsisSelector)) {
             parsedFiles.forEach(pf => {
                 if (pf.fileName === fileName) return;
                 
                 const existingMap = fileMappings[pf.fileName];
-                if (existingMap?.scrapeTitleSelector || existingMap?.scrapeYearSelector) return;
+                if (existingMap?.scrapeTitleSelector || existingMap?.scrapeYearSelector || existingMap?.scrapePosterSelector || existingMap?.scrapeSynopsisSelector) return;
                 
                 const targetRow = pf.rows[0];
                 if (!targetRow) return;
@@ -106,6 +106,8 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                         
                         newMap.scrapeTitleSelector = localMap.scrapeTitleSelector;
                         newMap.scrapeYearSelector = localMap.scrapeYearSelector;
+                        newMap.scrapePosterSelector = localMap.scrapePosterSelector;
+                        newMap.scrapeSynopsisSelector = localMap.scrapeSynopsisSelector;
                         updateFileMapping(pf.fileName, newMap);
                     }
                 }
@@ -342,6 +344,36 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                                     {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapeYearSelector ? <span>Preview: <strong className="text-gray-800">{scrapedPreview.year || 'None'}</strong></span> : null)}
                                                 </div>
                                             </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-600 mb-1">
+                                                    Poster CSS Selector
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g., img.poster"
+                                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    value={localMap.scrapePosterSelector || ''}
+                                                    onChange={e => setLocalMap({ ...localMap, scrapePosterSelector: e.target.value })}
+                                                />
+                                                <div className="mt-1 text-xs text-gray-500 h-4 truncate">
+                                                    {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapePosterSelector ? <span>Preview: <strong className="text-gray-800 truncate">{scrapedPreview.poster ? 'Found' : 'None'}</strong></span> : null)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-600 mb-1">
+                                                    Synopsis CSS Selector
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g., .description"
+                                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    value={localMap.scrapeSynopsisSelector || ''}
+                                                    onChange={e => setLocalMap({ ...localMap, scrapeSynopsisSelector: e.target.value })}
+                                                />
+                                                <div className="mt-1 text-xs text-gray-500 h-4 truncate">
+                                                    {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapeSynopsisSelector ? <span>Preview: <strong className="text-gray-800 truncate">{scrapedPreview.synopsis ? 'Found' : 'None'}</strong></span> : null)}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -460,12 +492,16 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                     baseUrl={localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn] ? sampleRow[localMap.scrapeUrlColumn] : (localMap.scrapeBaseUrl || '')}
                     initialTitleSelector={localMap.scrapeTitleSelector || ''}
                     initialYearSelector={localMap.scrapeYearSelector || ''}
+                    initialPosterSelector={localMap.scrapePosterSelector || ''}
+                    initialSynopsisSelector={localMap.scrapeSynopsisSelector || ''}
                     onClose={() => setShowVisualizer(false)}
-                    onSave={(titleSelector, yearSelector) => {
-                        setLocalMap({ 
-                            ...localMap, 
+                    onSave={(titleSelector, yearSelector, posterSelector, synopsisSelector) => {
+                        setLocalMap({
+                            ...localMap,
                             scrapeTitleSelector: titleSelector,
-                            scrapeYearSelector: yearSelector
+                            scrapeYearSelector: yearSelector,
+                            scrapePosterSelector: posterSelector,
+                            scrapeSynopsisSelector: synopsisSelector
                         });
                         setShowVisualizer(false);
                     }}

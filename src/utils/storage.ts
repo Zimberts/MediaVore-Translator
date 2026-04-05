@@ -25,6 +25,10 @@ export interface FieldMapping {
   isIdMode?: boolean;
   scrapeSeriesBaseUrl?: string;
   scrapeUrlColumn?: string;
+  poster?: string;
+  synopsis?: string;
+  scrapePosterSelector?: string;
+  scrapeSynopsisSelector?: string;
 }
 
 export const defaultFieldMapping: FieldMapping = {

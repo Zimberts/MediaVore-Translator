@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import JSZip from 'jszip';
 import { useAppContext } from '../contexts/AppContext';
 import { TitleCard } from './TitleCard';
-import { TMDBResult, searchTMDB } from '../api/tmdb';
+import { TMDBResult, searchTMDB, fetchDetails } from '../api/tmdb';
 import { scrapeData } from '../api/scrape';
 
 interface MatchItem {
@@ -13,6 +13,8 @@ interface MatchItem {
     scrapeBaseUrl?: string;
     scrapeTitleSelector?: string;
     scrapeYearSelector?: string;
+    scrapePosterSelector?: string;
+    scrapeSynopsisSelector?: string;
     isIdMode?: boolean;
     scrapeSeriesBaseUrl?: string;
     scrapeUrl?: string;
@@ -23,7 +25,7 @@ export function MatchContainer() {
     const [isExporting, setIsExporting] = useState(false);
     const [titlesList, setTitlesList] = useState<MatchItem[]>([]);
     const [resultsCache, setResultsCache] = useState<Record<string, TMDBResult[] | 'error' | 'scrape_error'>>({});
-    const [customQueries, setCustomQueries] = useState<Record<string, { title: string, year?: string, type: string }>>({});
+    const [customQueries, setCustomQueries] = useState<Record<string, { title: string, year?: string, type: string, poster?: string, synopsis?: string }>>({});
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const fetchingRef = useRef<Set<string>>(new Set());
@@ -84,6 +86,8 @@ export function MatchContainer() {
                         scrapeBaseUrl: currentMapping.scrapeBaseUrl,
                         scrapeTitleSelector: currentMapping.scrapeTitleSelector,
                         scrapeYearSelector: currentMapping.scrapeYearSelector,
+                        scrapePosterSelector: currentMapping.scrapePosterSelector,
+                        scrapeSynopsisSelector: currentMapping.scrapeSynopsisSelector,
                         isIdMode: currentMapping.isIdMode,
                         scrapeSeriesBaseUrl: currentMapping.scrapeSeriesBaseUrl,
                         scrapeUrl: scrapeUrl
@@ -142,14 +146,14 @@ export function MatchContainer() {
                             }
 
                             if (url) {
-                                const scraped = await scrapeData(url, item.scrapeTitleSelector || '', item.scrapeYearSelector || '');
+                                const scraped = await scrapeData(url, item.scrapeTitleSelector || '', item.scrapeYearSelector || '', item.scrapePosterSelector || '', item.scrapeSynopsisSelector || '');
                                 if (scraped.title) {
                                     searchTitle = scraped.title;
                                     searchYear = scraped.year;
 
                                     setCustomQueries(prev => ({
                                         ...prev,
-                                        [item.uniqueKey]: { title: scraped.title || '', year: scraped.year, type: searchType }
+                                        [item.uniqueKey]: { title: scraped.title || '', year: scraped.year, type: searchType, poster: scraped.poster, synopsis: scraped.synopsis }
                                     }));
                                 } else {
                                     console.warn('Scraping returned no title for url:', url);
@@ -335,9 +339,34 @@ export function MatchContainer() {
                 return [header, ...rows].join('\n');
             };
 
+            const filteredNotifications: any[] = [];
+            const now = new Date();
+            for (const notif of notifications) {
+                if (notif.type === 'movie') {
+                    if (!notif.releaseDate || new Date(notif.releaseDate) > now) {
+                        filteredNotifications.push(notif);
+                    }
+                } else if (notif.type === 'tv') {
+                    try {
+                        const details = await fetchDetails(notif.tmdbId, 'tv');
+                        const status = details.status;
+                        if (
+                            status === 'Returning Series' || 
+                            status === 'In Production' || 
+                            status === 'Planned' ||
+                            (!notif.releaseDate || new Date(notif.releaseDate) > now)
+                        ) {
+                            filteredNotifications.push(notif);
+                        }
+                    } catch (e) {
+                        filteredNotifications.push(notif);
+                    }
+                }
+            }
+
             zip.file('seen.csv', convertToCSV(seen, ['tmdbId', 'type', 'title', 'posterPath', 'seenDate', 'seasonNumber', 'episodeNumber', 'runtime', 'genres']));
             zip.file('likes.csv', convertToCSV(likes, ['tmdbId', 'type', 'title']));
-            zip.file('notifications.csv', convertToCSV(notifications, ['tmdbId', 'type', 'title', 'posterPath', 'releaseDate', 'seasonNumber', 'episodeNumber', 'autoNotify']));
+            zip.file('notifications.csv', convertToCSV(filteredNotifications, ['tmdbId', 'type', 'title', 'posterPath', 'releaseDate', 'seasonNumber', 'episodeNumber', 'autoNotify']));
             zip.file('lists.csv', convertToCSV(lists, ['listName', 'tmdbId', 'type', 'title', 'position']));
 
             const content = await zip.generateAsync({ type: 'blob' });
