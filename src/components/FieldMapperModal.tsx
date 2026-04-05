@@ -177,6 +177,19 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                         <span className="font-bold text-gray-700">File contains multiple distinct lists</span>
                                     </label>
 
+                                    {!localMap.isMultiList && (
+                                        <div className="mt-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">List Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2 border border-gray-300 rounded"
+                                                placeholder={fileName}
+                                                value={localMap.customListName || ''}
+                                                onChange={e => setLocalMap({ ...localMap, customListName: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
+
                                     {localMap.isMultiList && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                             <div>

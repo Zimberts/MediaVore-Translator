@@ -6,6 +6,7 @@ import { TMDBResult, searchTMDB } from '../api/tmdb';
 import { scrapeData } from '../api/scrape';
 
 interface MatchItem {
+    uniqueKey: string;
     title: string;
     year?: string;
     type: string;
@@ -76,6 +77,7 @@ export function MatchContainer() {
 
                 if (!groups.has(key)) {
                     groups.set(key, {
+                        uniqueKey: key,
                         title: t,
                         year: y,
                         type: typeStr,
@@ -102,20 +104,20 @@ export function MatchContainer() {
 
         const searchNext = async () => {
             // First derive the visible slice of items the user is actually looking at right now
-            const unconfirmedList = titlesList.filter(t => !confirmedMap[t.title]);
+            const unconfirmedList = titlesList.filter(t => !confirmedMap[t.uniqueKey]);
             const startIndex = (currentPage - 1) * pageSize;
             const visibleList = unconfirmedList.slice(startIndex, startIndex + pageSize); // only process exactly what's visible
 
             // From that slice, figure out who actually needs a TMDB lookup
             const pending = visibleList.filter(item =>
-                resultsCache[item.title] === undefined && !fetchingRef.current.has(item.title)
+                resultsCache[item.uniqueKey] === undefined && !fetchingRef.current.has(item.uniqueKey)
             );
 
             if (pending.length === 0) return;
 
             const batch = pending.slice(0, 5); // Search 5 at a time
 
-            batch.forEach(item => fetchingRef.current.add(item.title));
+            batch.forEach(item => fetchingRef.current.add(item.uniqueKey));
 
             const searchPromises = batch.map(async (item) => {
                 try {
@@ -123,10 +125,10 @@ export function MatchContainer() {
                     let searchYear = item.year;
                     let searchType = item.type;
 
-                    if (customQueries[item.title]) {
-                        searchTitle = customQueries[item.title].title;
-                        searchYear = customQueries[item.title].year;
-                        searchType = customQueries[item.title].type;
+                    if (customQueries[item.uniqueKey]) {
+                        searchTitle = customQueries[item.uniqueKey].title;
+                        searchYear = customQueries[item.uniqueKey].year;
+                        searchType = customQueries[item.uniqueKey].type;
                     } else if (item.scrapeUrl || (item.isIdMode && item.scrapeTitleSelector)) {
                         try {
                             let url = '';
@@ -147,7 +149,7 @@ export function MatchContainer() {
 
                                     setCustomQueries(prev => ({
                                         ...prev,
-                                        [item.title]: { title: scraped.title || '', year: scraped.year, type: searchType }
+                                        [item.uniqueKey]: { title: scraped.title || '', year: scraped.year, type: searchType }
                                     }));
                                 } else {
                                     console.warn('Scraping returned no title for url:', url);
@@ -161,20 +163,20 @@ export function MatchContainer() {
                     // If after all logic we are still searching for a raw HTTP url, it means scraping failed
                     // or wasn't configured. Don't spam TMDB with URLs, it just fails.
                     if (searchTitle.startsWith('http://') || searchTitle.startsWith('https://')) {
-                        setResultsCache(prev => ({ ...prev, [item.title]: 'scrape_error' }));
+                        setResultsCache(prev => ({ ...prev, [item.uniqueKey]: 'scrape_error' }));
                         return; // exit the promise mapping early, avoiding TMDB fetch
                     }
 
                     const results = await searchTMDB(searchTitle, searchType, searchYear);
 
-                    setResultsCache(prev => ({ ...prev, [item.title]: results }));
+                    setResultsCache(prev => ({ ...prev, [item.uniqueKey]: results }));
                     if (autoConfirm && results.length === 1) {
-                        confirmMatch(item.title, results[0]);
+                        confirmMatch(item.uniqueKey, results[0]);
                     }
                 } catch (e) {
-                    setResultsCache(prev => ({ ...prev, [item.title]: 'error' }));
+                    setResultsCache(prev => ({ ...prev, [item.uniqueKey]: 'error' }));
                 } finally {
-                    fetchingRef.current.delete(item.title);
+                    fetchingRef.current.delete(item.uniqueKey);
                 }
             });
 
@@ -194,7 +196,7 @@ export function MatchContainer() {
     }, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries, currentPage, pageSize]);
 
     useEffect(() => {
-        const unconfirmedCount = titlesList.filter(t => !confirmedMap[t.title]).length;
+        const unconfirmedCount = titlesList.filter(t => !confirmedMap[t.uniqueKey]).length;
         const totalPages = Math.max(1, Math.ceil(unconfirmedCount / pageSize));
         if (currentPage > totalPages) {
             setCurrentPage(totalPages);
@@ -232,15 +234,23 @@ export function MatchContainer() {
                     const titleStr = typeof titleRaw === 'string' ? titleRaw.trim() : '';
                     if (!titleStr) return;
 
-                    const confirmed = confirmedMap[titleStr];
-                    if (!confirmed) return;
-                    
                     const isTv = currentMapping.hasSeries && (
                         (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(row[currentMapping.type])) ||
                         (currentMapping.season && row[currentMapping.season]) ||
                         (currentMapping.episode && row[currentMapping.episode])
                     );
 
+                    const typeStr = isTv ? 'tv' : 'movie';
+                    
+                    let y = currentMapping.year ? row[currentMapping.year] : undefined;
+                    if (y && typeof y === 'number') y = String(y);
+                    if (y && typeof y === 'string') y = y.trim();
+
+                    const key = y ? `${titleStr}::${y}::${typeStr}` : `${titleStr}::${typeStr}`;
+
+                    const confirmed = confirmedMap[key];
+                    if (!confirmed) return;
+                    
                     let dateStr = row[currentMapping.date] || '';
                     if (dateStr && dateStr.includes('/')) {
                         const parts = dateStr.split('/');
@@ -272,7 +282,7 @@ export function MatchContainer() {
                     const runtime = '';
                     const genres = '';
 
-                    let listName = file.category || 'List';
+                    let listName = currentMapping.customListName || file.category || 'List';
                     if (currentMapping.isMultiList && currentMapping.listNameColumn && row[currentMapping.listNameColumn]) {
                         listName = row[currentMapping.listNameColumn];
                     } else if (currentMapping.category && currentMapping.category !== 'lists') {
@@ -342,8 +352,8 @@ export function MatchContainer() {
         setIsExporting(false);
     };
 
-    const confirmedCount = titlesList.filter(t => confirmedMap[t.title]).length;
-    const unconfirmedList = titlesList.filter(t => !confirmedMap[t.title]);
+    const confirmedCount = titlesList.filter(t => confirmedMap[t.uniqueKey]).length;
+    const unconfirmedList = titlesList.filter(t => !confirmedMap[t.uniqueKey]);
     const pendingCount = unconfirmedList.length;
 
     // Pagination logic
@@ -445,17 +455,17 @@ export function MatchContainer() {
 
                     return (
                         <TitleCard
-                            key={`${item.title}::${item.type}`}
+                            key={item.uniqueKey}
                             item={item}
                             sourceUrl={sourceUrl}
-                            results={resultsCache[item.title]}
-                            onConfirm={(match) => confirmMatch(item.title, match)}
-                            customQuery={customQueries[item.title]}
+                            results={resultsCache[item.uniqueKey]}
+                            onConfirm={(match) => confirmMatch(item.uniqueKey, match)}
+                            customQuery={customQueries[item.uniqueKey]}
                             onManualSearch={(newSearch) => {
-                                setCustomQueries(prev => ({ ...prev, [item.title]: newSearch }));
+                                setCustomQueries(prev => ({ ...prev, [item.uniqueKey]: newSearch }));
                                 setResultsCache(prev => {
                                     const next = { ...prev };
-                                    delete next[item.title];
+                                    delete next[item.uniqueKey];
                                     return next;
                                 });
                             }}

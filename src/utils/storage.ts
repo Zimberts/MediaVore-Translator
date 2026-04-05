@@ -17,6 +17,7 @@ export interface FieldMapping {
   category?: string;
   listNameColumn?: string;
   isMultiList?: boolean;
+  customListName?: string;
   likesListName?: string;
   scrapeBaseUrl?: string;
   scrapeTitleSelector?: string;
