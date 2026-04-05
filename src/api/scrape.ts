@@ -1,6 +1,8 @@
 export interface ScrapeResult {
   title?: string;
   year?: string;
+  poster?: string;
+  synopsis?: string;
 }
 
 /**
@@ -8,12 +10,16 @@ export interface ScrapeResult {
  * @param url - The URL to scrape
  * @param titleSelector - CSS selector for the title element
  * @param yearSelector - CSS selector for the year element
- * @returns Promise with title and year extracted from the page
+ * @param posterSelector - CSS selector for the poster image element
+ * @param synopsisSelector - CSS selector for the synopsis text element
+ * @returns Promise with title, year, poster and synopsis extracted from the page
  */
 export async function scrapeData(
   url: string,
   titleSelector: string,
-  yearSelector: string
+  yearSelector: string,
+  posterSelector?: string,
+  synopsisSelector?: string
 ): Promise<ScrapeResult> {
   if (!url) return {};
   
@@ -78,6 +84,30 @@ export async function scrapeData(
           result.year = match ? match[0] : text;
         }
       }
+    }
+    
+    if (posterSelector) {
+      const posterElement = doc.querySelector(posterSelector);
+      if (posterElement) {
+        const src = posterElement.getAttribute('src') || posterElement.getAttribute('data-src') || posterElement.getAttribute('content');
+        if (src) result.poster = src;
+      }
+    }
+    if (!result.poster) {
+      const ogImage = doc.querySelector('meta[property="og:image"]');
+      if (ogImage) result.poster = ogImage.getAttribute('content')?.trim();
+    }
+
+    if (synopsisSelector) {
+      const synElement = doc.querySelector(synopsisSelector);
+      if (synElement) {
+        const text = synElement.textContent?.trim();
+        if (text) result.synopsis = text;
+      }
+    }
+    if (!result.synopsis) {
+      const ogDesc = doc.querySelector('meta[property="og:description"]');
+      if (ogDesc) result.synopsis = ogDesc.getAttribute('content')?.trim();
     }
     
     return result;

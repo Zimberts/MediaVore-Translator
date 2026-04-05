@@ -4,11 +4,13 @@ export interface ScrapeVisualizerModalProps {
   baseUrl: string;
   initialTitleSelector?: string;
   initialYearSelector?: string;
-  onSave: (titleSelector: string, yearSelector: string) => void;
+  initialPosterSelector?: string;
+  initialSynopsisSelector?: string;
+  onSave: (titleSelector: string, yearSelector: string, posterSelector: string, synopsisSelector: string) => void;
   onClose: () => void;
 }
 
-export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYearSelector, onSave, onClose }: ScrapeVisualizerModalProps) {
+export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYearSelector, initialPosterSelector, initialSynopsisSelector, onSave, onClose }: ScrapeVisualizerModalProps) {
   const getInitialTestUrl = (): string => {
     if (baseUrl.includes('{id}')) {
       return '';
@@ -21,11 +23,15 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeField, setActiveField] = useState<'title' | 'year'>('title');
+  const [activeField, setActiveField] = useState<'title' | 'year' | 'poster' | 'synopsis'>('title');
   const [titleSelector, setTitleSelector] = useState<string>(initialTitleSelector || '');
   const [yearSelector, setYearSelector] = useState<string>(initialYearSelector || '');
+  const [posterSelector, setPosterSelector] = useState<string>(initialPosterSelector || '');
+  const [synopsisSelector, setSynopsisSelector] = useState<string>(initialSynopsisSelector || '');
   const [titleValue, setTitleValue] = useState<string>('');
   const [yearValue, setYearValue] = useState<string>('');
+  const [posterValue, setPosterValue] = useState<string>('');
+  const [synopsisValue, setSynopsisValue] = useState<string>('');
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -170,13 +176,33 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
               setYearValue('');
           }
       } catch(e) { setYearValue(''); }
+
+      try {
+          if (posterSelector) {
+              const el = doc.querySelector(posterSelector);
+              const src = el?.getAttribute('src') || el?.getAttribute('content') || el?.getAttribute('href') || '';
+              setPosterValue(src);
+          } else {
+              setPosterValue('');
+          }
+      } catch(e) { setPosterValue(''); }
+
+      try {
+          if (synopsisSelector) {
+              const el = doc.querySelector(synopsisSelector);
+              const text = el?.textContent?.trim() || el?.getAttribute('content') || '';
+              setSynopsisValue(text);
+          } else {
+              setSynopsisValue('');
+          }
+      } catch(e) { setSynopsisValue(''); }
   };
 
   useEffect(() => {
       const doc = iframeRef.current?.contentDocument;
       if (doc) updateLiveValues(doc);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [htmlContent, titleSelector, yearSelector]);
+  }, [htmlContent, titleSelector, yearSelector, posterSelector, synopsisSelector]);
 
   const handleFetchInfo = async (): Promise<void> => {
     if (!testUrl.trim()) {
@@ -255,8 +281,16 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
         setActiveField(prev => {
             if (prev === 'title') {
                 setTitleSelector(sel);
-            } else {
+                return 'year';
+            } else if (prev === 'year') {
                 setYearSelector(sel);
+                return 'poster';
+            } else if (prev === 'poster') {
+                setPosterSelector(sel);
+                return 'synopsis';
+            } else if (prev === 'synopsis') {
+                setSynopsisSelector(sel);
+                return 'synopsis';
             }
             return prev;
         });
@@ -300,30 +334,6 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
               {loading ? 'Fetching...' : 'Fetch'}
             </button>
           </div>
-          
-          <div className="flex gap-4 items-center bg-gray-50 px-4 py-2 rounded border border-gray-200">
-             <div className="text-sm font-bold text-gray-700 mr-2">Configuring:</div>
-             <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                <input 
-                    type="radio" 
-                    name="activeField" 
-                    checked={activeField === 'title'} 
-                    onChange={() => setActiveField('title')} 
-                    className="w-4 h-4 text-blue-600"
-                />
-                Title
-             </label>
-             <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                <input 
-                    type="radio" 
-                    name="activeField" 
-                    checked={activeField === 'year'} 
-                    onChange={() => setActiveField('year')} 
-                    className="w-4 h-4 text-blue-600"
-                />
-                Year
-             </label>
-          </div>
         </div>
 
         <div className="flex-1 overflow-hidden relative bg-gray-100 flex">
@@ -332,8 +342,8 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
                     Hover over the fetched webpage and click elements to automatically generate their CSS selectors. 
                 </p>
 
-                    <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 ${activeField === 'title' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                    <label className="block text-sm font-bold text-gray-800">
+                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'title' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('title')}>
+                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
                         Title Selector {activeField === 'title' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
                     </label>
                     <input 
@@ -349,8 +359,8 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
                     </div>
                 </div>
 
-                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 ${activeField === 'year' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                    <label className="block text-sm font-bold text-gray-800">
+                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'year' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('year')}>
+                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
                         Year Selector {activeField === 'year' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
                     </label>
                     <input 
@@ -366,8 +376,42 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
                     </div>
                 </div>
 
+                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'poster' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('poster')}>
+                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
+                        Poster Selector {activeField === 'poster' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
+                    </label>
+                    <input 
+                        type="text" 
+                        value={posterSelector} 
+                        onChange={e => setPosterSelector(e.target.value)}
+                        placeholder="e.g. img.poster"
+                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <div className="text-xs">
+                        <span className="font-bold text-gray-600">Value: </span>
+                        <span className="text-gray-900 break-words truncate block">{posterValue ? 'Found Image' : <span className="text-gray-400 italic">None</span>}</span>
+                    </div>
+                </div>
+
+                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'synopsis' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('synopsis')}>
+                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
+                        Synopsis Selector {activeField === 'synopsis' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
+                    </label>
+                    <input 
+                        type="text" 
+                        value={synopsisSelector} 
+                        onChange={e => setSynopsisSelector(e.target.value)}
+                        placeholder="e.g. .description"
+                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <div className="text-xs">
+                        <span className="font-bold text-gray-600">Value: </span>
+                        <span className="text-gray-900 break-words line-clamp-3">{synopsisValue || <span className="text-gray-400 italic">None</span>}</span>
+                    </div>
+                </div>
+
                 <button 
-                    onClick={() => onSave(titleSelector, yearSelector)}
+                    onClick={() => onSave(titleSelector, yearSelector, posterSelector, synopsisSelector)}
                     className="mt-auto bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold py-3 rounded shadow-sm w-full transition-colors"
                 >
                     Save Selectors

@@ -2,15 +2,19 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import JSZip from 'jszip';
 import { useAppContext } from '../contexts/AppContext';
 import { TitleCard } from './TitleCard';
-import { TMDBResult, searchTMDB } from '../api/tmdb';
+import { TMDBResult, searchTMDB, fetchDetails } from '../api/tmdb';
 import { scrapeData } from '../api/scrape';
 
 interface MatchItem {
+    uniqueKey: string;
     title: string;
+    year?: string;
     type: string;
     scrapeBaseUrl?: string;
     scrapeTitleSelector?: string;
     scrapeYearSelector?: string;
+    scrapePosterSelector?: string;
+    scrapeSynopsisSelector?: string;
     isIdMode?: boolean;
     scrapeSeriesBaseUrl?: string;
     scrapeUrl?: string;
@@ -21,7 +25,7 @@ export function MatchContainer() {
     const [isExporting, setIsExporting] = useState(false);
     const [titlesList, setTitlesList] = useState<MatchItem[]>([]);
     const [resultsCache, setResultsCache] = useState<Record<string, TMDBResult[] | 'error' | 'scrape_error'>>({});
-    const [customQueries, setCustomQueries] = useState<Record<string, {title: string, year?: string, type: string}>>({});
+    const [customQueries, setCustomQueries] = useState<Record<string, { title: string, year?: string, type: string, poster?: string, synopsis?: string }>>({});
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const fetchingRef = useRef<Set<string>>(new Set());
@@ -61,7 +65,12 @@ export function MatchContainer() {
                 );
 
                 const typeStr = isTv ? 'tv' : 'movie';
-                const key = `${t}::${typeStr}`;
+                
+                let y = currentMapping.year ? row[currentMapping.year] : undefined;
+                if (y && typeof y === 'number') y = String(y);
+                if (y && typeof y === 'string') y = y.trim();
+
+                const key = y ? `${t}::${y}::${typeStr}` : `${t}::${typeStr}`;
 
                 let scrapeUrl = '';
                 if (currentMapping.scrapeUrlColumn && row[currentMapping.scrapeUrlColumn]) {
@@ -70,11 +79,15 @@ export function MatchContainer() {
 
                 if (!groups.has(key)) {
                     groups.set(key, {
+                        uniqueKey: key,
                         title: t,
+                        year: y,
                         type: typeStr,
                         scrapeBaseUrl: currentMapping.scrapeBaseUrl,
                         scrapeTitleSelector: currentMapping.scrapeTitleSelector,
                         scrapeYearSelector: currentMapping.scrapeYearSelector,
+                        scrapePosterSelector: currentMapping.scrapePosterSelector,
+                        scrapeSynopsisSelector: currentMapping.scrapeSynopsisSelector,
                         isIdMode: currentMapping.isIdMode,
                         scrapeSeriesBaseUrl: currentMapping.scrapeSeriesBaseUrl,
                         scrapeUrl: scrapeUrl
@@ -95,31 +108,31 @@ export function MatchContainer() {
 
         const searchNext = async () => {
             // First derive the visible slice of items the user is actually looking at right now
-            const unconfirmedList = titlesList.filter(t => !confirmedMap[t.title]);
+            const unconfirmedList = titlesList.filter(t => !confirmedMap[t.uniqueKey]);
             const startIndex = (currentPage - 1) * pageSize;
             const visibleList = unconfirmedList.slice(startIndex, startIndex + pageSize); // only process exactly what's visible
-            
+
             // From that slice, figure out who actually needs a TMDB lookup
             const pending = visibleList.filter(item =>
-                resultsCache[item.title] === undefined && !fetchingRef.current.has(item.title)
+                resultsCache[item.uniqueKey] === undefined && !fetchingRef.current.has(item.uniqueKey)
             );
 
             if (pending.length === 0) return;
 
             const batch = pending.slice(0, 5); // Search 5 at a time
-            
-            batch.forEach(item => fetchingRef.current.add(item.title));
+
+            batch.forEach(item => fetchingRef.current.add(item.uniqueKey));
 
             const searchPromises = batch.map(async (item) => {
                 try {
                     let searchTitle = item.title;
-                    let searchYear = undefined;
+                    let searchYear = item.year;
                     let searchType = item.type;
-                    
-                    if (customQueries[item.title]) {
-                        searchTitle = customQueries[item.title].title;
-                        searchYear = customQueries[item.title].year;
-                        searchType = customQueries[item.title].type;
+
+                    if (customQueries[item.uniqueKey]) {
+                        searchTitle = customQueries[item.uniqueKey].title;
+                        searchYear = customQueries[item.uniqueKey].year;
+                        searchType = customQueries[item.uniqueKey].type;
                     } else if (item.scrapeUrl || (item.isIdMode && item.scrapeTitleSelector)) {
                         try {
                             let url = '';
@@ -132,58 +145,62 @@ export function MatchContainer() {
                                 }
                             }
 
-                        if (url) {
-                            const scraped = await scrapeData(url, item.scrapeTitleSelector || '', item.scrapeYearSelector || '');
-                            if (scraped.title) {
-                                searchTitle = scraped.title;
-                                searchYear = scraped.year;
-                                
-                                setCustomQueries(prev => ({
-                                    ...prev,
-                                    [item.title]: { title: scraped.title || '', year: scraped.year, type: searchType }
-                                }));
-                            } else {
-                                console.warn('Scraping returned no title for url:', url);
+                            if (url) {
+                                const scraped = await scrapeData(url, item.scrapeTitleSelector || '', item.scrapeYearSelector || '', item.scrapePosterSelector || '', item.scrapeSynopsisSelector || '');
+                                if (scraped.title) {
+                                    searchTitle = scraped.title;
+                                    searchYear = scraped.year;
+
+                                    setCustomQueries(prev => ({
+                                        ...prev,
+                                        [item.uniqueKey]: { title: scraped.title || '', year: scraped.year, type: searchType, poster: scraped.poster, synopsis: scraped.synopsis }
+                                    }));
+                                } else {
+                                    console.warn('Scraping returned no title for url:', url);
+                                }
                             }
+                        } catch (err) {
+                            console.error('Failed to scrape for:', item.title, err);
                         }
-                    } catch (err) {
-                        console.error('Failed to scrape for:', item.title, err);
                     }
-                }
 
-                // If after all logic we are still searching for a raw HTTP url, it means scraping failed
-                // or wasn't configured. Don't spam TMDB with URLs, it just fails.
-                if (searchTitle.startsWith('http://') || searchTitle.startsWith('https://')) {
-                    setResultsCache(prev => ({ ...prev, [item.title]: 'scrape_error' }));
-                    return; // exit the promise mapping early, avoiding TMDB fetch
-                }
+                    // If after all logic we are still searching for a raw HTTP url, it means scraping failed
+                    // or wasn't configured. Don't spam TMDB with URLs, it just fails.
+                    if (searchTitle.startsWith('http://') || searchTitle.startsWith('https://')) {
+                        setResultsCache(prev => ({ ...prev, [item.uniqueKey]: 'scrape_error' }));
+                        return; // exit the promise mapping early, avoiding TMDB fetch
+                    }
 
-                const results = await searchTMDB(searchTitle, searchType, searchYear);
-                
-                setResultsCache(prev => ({ ...prev, [item.title]: results }));
-                if (autoConfirm && results.length === 1) {
-                    confirmMatch(item.title, results[0]);
+                    const results = await searchTMDB(searchTitle, searchType, searchYear);
+
+                    setResultsCache(prev => ({ ...prev, [item.uniqueKey]: results }));
+                    if (autoConfirm && results.length === 1) {
+                        confirmMatch(item.uniqueKey, results[0]);
+                    }
+                } catch (e) {
+                    setResultsCache(prev => ({ ...prev, [item.uniqueKey]: 'error' }));
+                } finally {
+                    fetchingRef.current.delete(item.uniqueKey);
                 }
-            } catch (e) {
-                setResultsCache(prev => ({ ...prev, [item.title]: 'error' }));
-            } finally {
-                fetchingRef.current.delete(item.title);
+            });
+
+            await Promise.all(searchPromises);
+        };
+
+        const timeoutId = setTimeout(() => {
+            if (active) {
+                searchNext();
             }
-        });
+        }, 150);
 
-        await Promise.all(searchPromises);
-        if (active && pending.length > 5) {
-            setTimeout(searchNext, 500); // small delay before next batch
-        }
-    };
-
-    searchNext();
-
-    return () => { active = false; };
-}, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries, currentPage, pageSize]);
+        return () => { 
+            active = false; 
+            clearTimeout(timeoutId);
+        };
+    }, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries, currentPage, pageSize]);
 
     useEffect(() => {
-        const unconfirmedCount = titlesList.filter(t => !confirmedMap[t.title]).length;
+        const unconfirmedCount = titlesList.filter(t => !confirmedMap[t.uniqueKey]).length;
         const totalPages = Math.max(1, Math.ceil(unconfirmedCount / pageSize));
         if (currentPage > totalPages) {
             setCurrentPage(totalPages);
@@ -208,6 +225,7 @@ export function MatchContainer() {
             const lists: any[] = [];
 
             let listPositions: Record<string, number> = {};
+            const exportDedupe = new Set<string>();
 
             parsedFiles.forEach(file => {
                 const currentMapping = fileMappings[file.fileName];
@@ -220,15 +238,23 @@ export function MatchContainer() {
                     const titleStr = typeof titleRaw === 'string' ? titleRaw.trim() : '';
                     if (!titleStr) return;
 
-                    const confirmed = confirmedMap[titleStr];
-                    if (!confirmed) return;
-
                     const isTv = currentMapping.hasSeries && (
                         (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(row[currentMapping.type])) ||
                         (currentMapping.season && row[currentMapping.season]) ||
                         (currentMapping.episode && row[currentMapping.episode])
                     );
 
+                    const typeStr = isTv ? 'tv' : 'movie';
+                    
+                    let y = currentMapping.year ? row[currentMapping.year] : undefined;
+                    if (y && typeof y === 'number') y = String(y);
+                    if (y && typeof y === 'string') y = y.trim();
+
+                    const key = y ? `${titleStr}::${y}::${typeStr}` : `${titleStr}::${typeStr}`;
+
+                    const confirmed = confirmedMap[key];
+                    if (!confirmed) return;
+                    
                     let dateStr = row[currentMapping.date] || '';
                     if (dateStr && dateStr.includes('/')) {
                         const parts = dateStr.split('/');
@@ -246,6 +272,12 @@ export function MatchContainer() {
 
                     const tmdbId = confirmed.id;
                     const type = isTv ? 'tv' : 'movie';
+                    
+                    // Deduplicate identical combinations of movie, date, and exact list type
+                    const dedupeKey = `${tmdbId}-${category}-${dateStr}`;
+                    if (exportDedupe.has(dedupeKey)) return;
+                    exportDedupe.add(dedupeKey);
+
                     const title = confirmed.name || confirmed.title;
                     const seasonNumber = (isTv && currentMapping.season) ? parseInt(row[currentMapping.season], 10) || '' : '';
                     const episodeNumber = (isTv && currentMapping.episode) ? parseInt(row[currentMapping.episode], 10) || '' : '';
@@ -254,7 +286,7 @@ export function MatchContainer() {
                     const runtime = '';
                     const genres = '';
 
-                    let listName = file.category || 'List';
+                    let listName = currentMapping.customListName || file.category || 'List';
                     if (currentMapping.isMultiList && currentMapping.listNameColumn && row[currentMapping.listNameColumn]) {
                         listName = row[currentMapping.listNameColumn];
                     } else if (currentMapping.category && currentMapping.category !== 'lists') {
@@ -271,6 +303,12 @@ export function MatchContainer() {
                     } else if (currentMapping.category === 'watchlist' || category.includes('watchlist') || category.includes('notify')) {
                         notifications.push({
                             tmdbId, type, title, posterPath, releaseDate, seasonNumber, episodeNumber, autoNotify: 'true'
+                        });
+                        
+                        // Also add watchlist items into the generic lists payload so it yields a physical "Watchlist"
+                        if (!listPositions[listName]) listPositions[listName] = 1;
+                        lists.push({
+                            listName, tmdbId, type, title, position: listPositions[listName]++
                         });
                     } else if (currentMapping.category === 'seen' || category.includes('seen') || category.includes('diary') || category.includes('history') || category === '') {
                         seen.push({
@@ -301,9 +339,34 @@ export function MatchContainer() {
                 return [header, ...rows].join('\n');
             };
 
+            const filteredNotifications: any[] = [];
+            const now = new Date();
+            for (const notif of notifications) {
+                if (notif.type === 'movie') {
+                    if (!notif.releaseDate || new Date(notif.releaseDate) > now) {
+                        filteredNotifications.push(notif);
+                    }
+                } else if (notif.type === 'tv') {
+                    try {
+                        const details = await fetchDetails(notif.tmdbId, 'tv');
+                        const status = details.status;
+                        if (
+                            status === 'Returning Series' || 
+                            status === 'In Production' || 
+                            status === 'Planned' ||
+                            (!notif.releaseDate || new Date(notif.releaseDate) > now)
+                        ) {
+                            filteredNotifications.push(notif);
+                        }
+                    } catch (e) {
+                        filteredNotifications.push(notif);
+                    }
+                }
+            }
+
             zip.file('seen.csv', convertToCSV(seen, ['tmdbId', 'type', 'title', 'posterPath', 'seenDate', 'seasonNumber', 'episodeNumber', 'runtime', 'genres']));
             zip.file('likes.csv', convertToCSV(likes, ['tmdbId', 'type', 'title']));
-            zip.file('notifications.csv', convertToCSV(notifications, ['tmdbId', 'type', 'title', 'posterPath', 'releaseDate', 'seasonNumber', 'episodeNumber', 'autoNotify']));
+            zip.file('notifications.csv', convertToCSV(filteredNotifications, ['tmdbId', 'type', 'title', 'posterPath', 'releaseDate', 'seasonNumber', 'episodeNumber', 'autoNotify']));
             zip.file('lists.csv', convertToCSV(lists, ['listName', 'tmdbId', 'type', 'title', 'position']));
 
             const content = await zip.generateAsync({ type: 'blob' });
@@ -324,10 +387,10 @@ export function MatchContainer() {
         setIsExporting(false);
     };
 
-    const confirmedCount = titlesList.filter(t => confirmedMap[t.title]).length;
-    const unconfirmedList = titlesList.filter(t => !confirmedMap[t.title]);
+    const confirmedCount = titlesList.filter(t => confirmedMap[t.uniqueKey]).length;
+    const unconfirmedList = titlesList.filter(t => !confirmedMap[t.uniqueKey]);
     const pendingCount = unconfirmedList.length;
-    
+
     // Pagination logic
     const totalPages = Math.max(1, Math.ceil(unconfirmedList.length / pageSize));
     // Ensure currentPage is valid
@@ -363,8 +426,8 @@ export function MatchContainer() {
                     {unconfirmedList.length > 0 && (
                         <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
                             <label className="text-xs font-bold text-gray-500 uppercase">Items per page:</label>
-                            <select 
-                                value={pageSize} 
+                            <select
+                                value={pageSize}
                                 onChange={(e) => {
                                     setPageSize(Number(e.target.value));
                                     setCurrentPage(1);
@@ -394,7 +457,7 @@ export function MatchContainer() {
                         Showing {startIndex + 1} to {Math.min(startIndex + pageSize, unconfirmedList.length)} of {unconfirmedList.length} items
                     </div>
                     <div className="flex items-center gap-2">
-                        <button 
+                        <button
                             disabled={safeCurrentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold"
@@ -404,7 +467,7 @@ export function MatchContainer() {
                         <span className="text-sm font-bold text-gray-700 px-2">
                             Page {safeCurrentPage} of {totalPages}
                         </span>
-                        <button 
+                        <button
                             disabled={safeCurrentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold"
@@ -424,29 +487,30 @@ export function MatchContainer() {
                             sourceUrl = baseUrl.replace('{id}', encodeURIComponent(item.title));
                         }
                     }
-                    
+
                     return (
                         <TitleCard
-                            key={`${item.title}::${item.type}`}
+                            key={item.uniqueKey}
                             item={item}
                             sourceUrl={sourceUrl}
-                            results={resultsCache[item.title]}
-                        onConfirm={(match) => confirmMatch(item.title, match)}
-                        customQuery={customQueries[item.title]}
-                        onManualSearch={(newSearch) => {
-                            setCustomQueries(prev => ({ ...prev, [item.title]: newSearch }));
-                            setResultsCache(prev => {
-                                const next = { ...prev };
-                                delete next[item.title];
-                                return next;
-                            });
-                        }}
-                    />
-                )})}
+                            results={resultsCache[item.uniqueKey]}
+                            onConfirm={(match) => confirmMatch(item.uniqueKey, match)}
+                            customQuery={customQueries[item.uniqueKey]}
+                            onManualSearch={(newSearch) => {
+                                setCustomQueries(prev => ({ ...prev, [item.uniqueKey]: newSearch }));
+                                setResultsCache(prev => {
+                                    const next = { ...prev };
+                                    delete next[item.uniqueKey];
+                                    return next;
+                                });
+                            }}
+                        />
+                    )
+                })}
 
                 {unconfirmedList.length > 0 && totalPages > 1 && (
                     <div className="flex items-center justify-center gap-4 bg-white px-4 py-4 rounded-lg border border-gray-200 shadow-sm mt-4">
-                        <button 
+                        <button
                             disabled={safeCurrentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             className="bg-white px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold shadow-sm transition-colors"
@@ -456,7 +520,7 @@ export function MatchContainer() {
                         <span className="text-sm font-bold text-gray-500 uppercase">
                             Page {safeCurrentPage} of {totalPages}
                         </span>
-                        <button 
+                        <button
                             disabled={safeCurrentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             className="bg-white px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 text-sm font-bold shadow-sm transition-colors"
