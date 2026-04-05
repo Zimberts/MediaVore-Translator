@@ -179,14 +179,18 @@ export function MatchContainer() {
             });
 
             await Promise.all(searchPromises);
-            if (active && pending.length > 5) {
-                setTimeout(searchNext, 500); // small delay before next batch
-            }
         };
 
-        searchNext();
+        const timeoutId = setTimeout(() => {
+            if (active) {
+                searchNext();
+            }
+        }, 150);
 
-        return () => { active = false; };
+        return () => { 
+            active = false; 
+            clearTimeout(timeoutId);
+        };
     }, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries, currentPage, pageSize]);
 
     useEffect(() => {
@@ -215,6 +219,7 @@ export function MatchContainer() {
             const lists: any[] = [];
 
             let listPositions: Record<string, number> = {};
+            const exportDedupe = new Set<string>();
 
             parsedFiles.forEach(file => {
                 const currentMapping = fileMappings[file.fileName];
@@ -229,7 +234,7 @@ export function MatchContainer() {
 
                     const confirmed = confirmedMap[titleStr];
                     if (!confirmed) return;
-
+                    
                     const isTv = currentMapping.hasSeries && (
                         (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(row[currentMapping.type])) ||
                         (currentMapping.season && row[currentMapping.season]) ||
@@ -253,6 +258,12 @@ export function MatchContainer() {
 
                     const tmdbId = confirmed.id;
                     const type = isTv ? 'tv' : 'movie';
+                    
+                    // Deduplicate identical combinations of movie, date, and exact list type
+                    const dedupeKey = `${tmdbId}-${category}-${dateStr}`;
+                    if (exportDedupe.has(dedupeKey)) return;
+                    exportDedupe.add(dedupeKey);
+
                     const title = confirmed.name || confirmed.title;
                     const seasonNumber = (isTv && currentMapping.season) ? parseInt(row[currentMapping.season], 10) || '' : '';
                     const episodeNumber = (isTv && currentMapping.episode) ? parseInt(row[currentMapping.episode], 10) || '' : '';

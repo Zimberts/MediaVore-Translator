@@ -41,6 +41,39 @@ export function parseCSV(text: string): ParsedCSV {
   return { headers, rows };
 }
 
+export function parseCSVBlocks(text: string): ParsedCSV[] {
+  if (!text) return [{ headers: [], rows: [] }];
+  
+  const lines = text.split(/\r?\n/);
+  const blocks: string[][] = [];
+  let currentBlock: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+     const line = lines[i].trim();
+     if (line.length === 0) {
+        if (currentBlock.length > 0) {
+            blocks.push(currentBlock);
+            currentBlock = [];
+        }
+     } else {
+        currentBlock.push(lines[i]);
+     }
+  }
+  if (currentBlock.length > 0) blocks.push(currentBlock);
+
+  const results: ParsedCSV[] = [];
+  for (const blockLines of blocks) {
+      const blockText = blockLines.join('\n');
+      const parsed = parseCSV(blockText);
+      if (parsed.rows.length > 0) {
+          results.push(parsed);
+      }
+  }
+  
+  if (results.length === 0) return [{ headers: [], rows: [] }];
+  return results;
+}
+
 export function splitCSVLine(line: string): string[] {
   const result: string[] = [];
   let cur = '';
@@ -128,30 +161,33 @@ export function tryParseValue(s: string): any {
 }
 
 // Normalize an input text by extension hint and return rows array
-export function parseByFilename(name: string, text: string): Record<string, any>[] {
+export function parseByFilename(name: string, text: string): ParsedCSV[] {
   const ext = (name || '').toLowerCase();
 
   if (ext.endsWith('.csv')) {
-    return parseCSV(text).rows;
+    return parseCSVBlocks(text);
   }
   if (ext.endsWith('.json')) {
-    return parseJSON(text).rows;
+    const rows = parseJSON(text).rows;
+    return [{ headers: rows.length > 0 ? Object.keys(rows[0]) : [], rows }];
   }
   if (ext.endsWith('.yml') || ext.endsWith('.yaml')) {
-    return parseYAML(text).rows;
+    const rows = parseYAML(text).rows;
+    return [{ headers: rows.length > 0 ? Object.keys(rows[0]) : [], rows }];
   }
 
   // fallback: try JSON, then CSV, then YAML
   try {
     const j = JSON.parse(text);
-    if (Array.isArray(j)) return j;
+    if (Array.isArray(j)) return [{ headers: j.length > 0 ? Object.keys(j[0]) : [], rows: j }];
   } catch (e) {}
 
-  const csv = parseCSV(text);
-  if (csv.rows && csv.rows.length) return csv.rows;
+  const csvBlocks = parseCSVBlocks(text);
+  if (csvBlocks.length > 0 && csvBlocks.some(b => b.rows.length > 0)) return csvBlocks;
 
   const y = parseYAML(text);
-  return y.rows || [];
+  const yRows = y.rows || [];
+  return [{ headers: yRows.length > 0 ? Object.keys(yRows[0]) : [], rows: yRows }];
 }
 
 export async function parseZipContent(file: File | Blob): Promise<{ fileName: string, headers: string[], rows: Record<string, any>[] }[]> {
@@ -163,10 +199,13 @@ export async function parseZipContent(file: File | Blob): Promise<{ fileName: st
     if (!zipEntry.dir) {
       try {
         const text = await zipEntry.async('text');
-        const rows = parseByFilename(zipEntry.name, text);
-        if (rows && rows.length > 0) {
-          const headers = Object.keys(rows[0]);
-          results.push({ fileName: path, headers, rows });
+        const blocks = parseByFilename(zipEntry.name, text);
+        for (let i = 0; i < blocks.length; i++) {
+          const { headers, rows } = blocks[i];
+          if (rows && rows.length > 0) {
+            const name = blocks.length > 1 ? `${path} (${i + 1})` : path;
+            results.push({ fileName: name, headers, rows });
+          }
         }
       } catch (e) {
         // ignore parsing errors and proceed thoroughly

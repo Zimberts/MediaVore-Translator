@@ -39,11 +39,17 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                         reader.readAsText(file);
                     });
 
-                    const rows = parseByFilename(file.name, text);
-                    if (rows && rows.length > 0) {
-                        const headers = Object.keys(rows[0]);
-                        newParsedFiles.push({ fileName: file.name, headers, rows, category: file.name });
-                    }
+                    const blocks = parseByFilename(file.name, text);
+                    blocks.forEach((block, i) => {
+                        if (block.rows.length === 0) return;
+                        const nameSuffix = blocks.length > 1 ? ` (${i + 1})` : '';
+                        newParsedFiles.push({ 
+                            fileName: `${file.name}${nameSuffix}`, 
+                            headers: block.headers, 
+                            rows: block.rows, 
+                            category: file.name 
+                        });
+                    });
                 }
             } catch (err: any) {
                 console.error(`Failed to file ${file.name}: ${err.message}`);
