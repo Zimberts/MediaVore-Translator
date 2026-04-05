@@ -300,6 +300,12 @@ export function MatchContainer() {
                         notifications.push({
                             tmdbId, type, title, posterPath, releaseDate, seasonNumber, episodeNumber, autoNotify: 'true'
                         });
+                        
+                        // Also add watchlist items into the generic lists payload so it yields a physical "Watchlist"
+                        if (!listPositions[listName]) listPositions[listName] = 1;
+                        lists.push({
+                            listName, tmdbId, type, title, position: listPositions[listName]++
+                        });
                     } else if (currentMapping.category === 'seen' || category.includes('seen') || category.includes('diary') || category.includes('history') || category === '') {
                         seen.push({
                             tmdbId, type, title, posterPath, seenDate: dateStr, seasonNumber, episodeNumber, runtime, genres
