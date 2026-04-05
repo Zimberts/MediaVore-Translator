@@ -3,7 +3,7 @@ import { TMDBResult } from '../api/tmdb';
 
 interface TitleCardProps {
     onManualSearch?: (newSearch: { title: string, year?: string, type: string }) => void;
-    customQuery?: {title: string, year?: string, type: string};
+    customQuery?: {title: string, year?: string, type: string, poster?: string, synopsis?: string};
     item: { title: string, type: string };
     sourceUrl?: string;
     results?: TMDBResult[] | 'error' | 'scrape_error';
@@ -131,8 +131,20 @@ export function TitleCard({ item, results, onConfirm, onManualSearch, customQuer
                         </a>
                     )}
                 </div>
+                {(customQuery?.poster || customQuery?.synopsis) && (
+                    <div className="flex flex-row gap-3 mt-2 mb-1 p-3 bg-gray-50/50 border border-gray-200 rounded text-left">
+                        {customQuery.poster && (
+                            <img src={customQuery.poster} alt="Scraped" className="h-[90px] w-[60px] object-cover rounded shadow-sm flex-shrink-0 bg-gray-200" />
+                        )}
+                        {customQuery.synopsis && (
+                            <div className="text-sm text-gray-600 line-clamp-4 overflow-hidden italic leading-snug flex-1">
+                                "{customQuery.synopsis}"
+                            </div>
+                        )}
+                    </div>
+                )}
                 {currentTitle !== item.title && (
-                    <div className={`text-gray-400 font-normal ${isUrl ? 'text-[10px] break-all w-full max-w-[500px] opacity-50 hover:opacity-100 transition-opacity cursor-help' : 'text-xs'}`} title={isUrl ? "Original URL" : "Original Title"}>
+                    <div className={`text-gray-400 font-normal ${isUrl ? 'text-[10px] break-all w-full max-w-[500px] opacity-50 hover:opacity-100 transition-opacity cursor-help mt-1' : 'text-xs mt-1'}`} title={isUrl ? "Original URL" : "Original Title"}>
                         (Original: {item.title})
                     </div>
                 )}

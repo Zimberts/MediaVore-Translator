@@ -30,26 +30,29 @@ describe('Parsers', () => {
 
   it('should detect CSV by filename', () => {
     const csv = 'Name,Type\nAlpha,movie\nBeta,tv';
-    const rows = parseByFilename('test.csv', csv);
-    expect(Array.isArray(rows)).toBe(true);
-    expect(rows.length).toBe(2);
-    expect(rows[0].Name).toBe('Alpha');
+    const blocks = parseByFilename('test.csv', csv);
+    expect(Array.isArray(blocks)).toBe(true);
+    expect(blocks.length).toBe(1);
+    expect(blocks[0].rows.length).toBe(2);
+    expect(blocks[0].rows[0].Name).toBe('Alpha');
   });
 
   it('should detect JSON by filename', () => {
     const json = JSON.stringify([{ name: 'A' }]);
-    const rows = parseByFilename('test.json', json);
-    expect(Array.isArray(rows)).toBe(true);
-    expect(rows.length).toBe(1);
-    expect(rows[0].name).toBe('A');
+    const blocks = parseByFilename('test.json', json);
+    expect(Array.isArray(blocks)).toBe(true);
+    expect(blocks.length).toBe(1);
+    expect(blocks[0].rows.length).toBe(1);
+    expect(blocks[0].rows[0].name).toBe('A');
   });
 
   it('should detect YAML by filename', () => {
     const yaml = '- name: Alpha\n  type: movie';
-    const rows = parseByFilename('test.yml', yaml);
-    expect(Array.isArray(rows)).toBe(true);
-    expect(rows.length).toBe(1);
-    expect(rows[0].name).toBe('Alpha');
+    const blocks = parseByFilename('test.yml', yaml);
+    expect(Array.isArray(blocks)).toBe(true);
+    expect(blocks.length).toBe(1);
+    expect(blocks[0].rows.length).toBe(1);
+    expect(blocks[0].rows[0].name).toBe('Alpha');
   });
 
   it('should parse zip content correctly', async () => {

@@ -27,7 +27,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
     const [showVisualizer, setShowVisualizer] = useState<boolean>(false);
     const sampleRow = file?.rows?.[0];
 
-    const [scrapedPreview, setScrapedPreview] = useState<{title?: string, year?: string}>({});
+    const [scrapedPreview, setScrapedPreview] = useState<{title?: string, year?: string, poster?: string, synopsis?: string}>({});
     const [isScraping, setIsScraping] = useState(false);
 
     useEffect(() => {
@@ -35,12 +35,12 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
             ? sampleRow[localMap.scrapeUrlColumn] 
             : (localMap.scrapeBaseUrl ? localMap.scrapeBaseUrl.replace('{id}', String(sampleRow?.[localMap.title || ''])) : null);
 
-        if (!sampleUrl || (!localMap.scrapeTitleSelector && !localMap.scrapeYearSelector)) return;
+        if (!sampleUrl || (!localMap.scrapeTitleSelector && !localMap.scrapeYearSelector && !localMap.scrapePosterSelector && !localMap.scrapeSynopsisSelector)) return;
 
         const timer = setTimeout(async () => {
             setIsScraping(true);
             try {
-                const result = await scrapeData(sampleUrl, localMap.scrapeTitleSelector || '', localMap.scrapeYearSelector || '');
+                const result = await scrapeData(sampleUrl, localMap.scrapeTitleSelector || '', localMap.scrapeYearSelector || '', localMap.scrapePosterSelector, localMap.scrapeSynopsisSelector);
                 setScrapedPreview(result);
             } catch (e) {
                 console.error(e);
@@ -50,11 +50,70 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
         }, 800);
 
         return () => clearTimeout(timer);
-    }, [localMap.scrapeUrlColumn, localMap.scrapeBaseUrl, localMap.title, localMap.scrapeTitleSelector, localMap.scrapeYearSelector, sampleRow]);
+    }, [localMap.scrapeUrlColumn, localMap.scrapeBaseUrl, localMap.title, localMap.scrapeTitleSelector, localMap.scrapeYearSelector, localMap.scrapePosterSelector, localMap.scrapeSynopsisSelector, sampleRow]);
 
 
     const handleSave = () => {
         updateFileMapping(fileName, localMap);
+
+        const getBaseUrlPattern = (url: string | null) => {
+            if (!url) return null;
+            try {
+                const u = new URL(url);
+                const parts = u.pathname.split('/').filter(Boolean);
+                if (parts.length > 0) parts.pop();
+                return u.origin + '/' + parts.join('/');
+            } catch {
+                return null;
+            }
+        };
+
+        const currentSampleUrl = localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn] 
+            ? sampleRow[localMap.scrapeUrlColumn] 
+            : (localMap.scrapeBaseUrl ? localMap.scrapeBaseUrl.replace('{id}', 'sample') : null);
+
+        const currentPattern = getBaseUrlPattern(currentSampleUrl as string);
+
+        if (currentPattern && (localMap.scrapeTitleSelector || localMap.scrapeYearSelector || localMap.scrapePosterSelector || localMap.scrapeSynopsisSelector)) {
+            parsedFiles.forEach(pf => {
+                if (pf.fileName === fileName) return;
+                
+                const existingMap = fileMappings[pf.fileName];
+                if (existingMap?.scrapeTitleSelector || existingMap?.scrapeYearSelector || existingMap?.scrapePosterSelector || existingMap?.scrapeSynopsisSelector) return;
+                
+                const targetRow = pf.rows[0];
+                if (!targetRow) return;
+
+                let targetUrl: string | null = null;
+                if (existingMap?.scrapeUrlColumn && targetRow[existingMap.scrapeUrlColumn]) {
+                    targetUrl = String(targetRow[existingMap.scrapeUrlColumn]);
+                } else if (existingMap?.scrapeBaseUrl) {
+                    targetUrl = existingMap.scrapeBaseUrl.replace('{id}', String(targetRow[existingMap.title || ''] || ''));
+                } else if (localMap.scrapeUrlColumn && targetRow[localMap.scrapeUrlColumn]) {
+                    targetUrl = String(targetRow[localMap.scrapeUrlColumn]);
+                }
+
+                if (targetUrl) {
+                    const targetPattern = getBaseUrlPattern(targetUrl);
+                    if (targetPattern === currentPattern) {
+                        const newMap = existingMap ? { ...existingMap } : { ...defaultFieldMapping };
+                        
+                        if (!newMap.scrapeUrlColumn && !newMap.scrapeBaseUrl) {
+                            newMap.scrapeUrlColumn = localMap.scrapeUrlColumn;
+                            newMap.scrapeBaseUrl = localMap.scrapeBaseUrl;
+                            newMap.isIdMode = localMap.isIdMode;
+                        }
+                        
+                        newMap.scrapeTitleSelector = localMap.scrapeTitleSelector;
+                        newMap.scrapeYearSelector = localMap.scrapeYearSelector;
+                        newMap.scrapePosterSelector = localMap.scrapePosterSelector;
+                        newMap.scrapeSynopsisSelector = localMap.scrapeSynopsisSelector;
+                        updateFileMapping(pf.fileName, newMap);
+                    }
+                }
+            });
+        }
+
         onClose();
     };
 
@@ -120,6 +179,19 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                         <span className="font-bold text-gray-700">File contains multiple distinct lists</span>
                                     </label>
 
+                                    {!localMap.isMultiList && (
+                                        <div className="mt-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">List Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2 border border-gray-300 rounded"
+                                                placeholder={fileName}
+                                                value={localMap.customListName || ''}
+                                                onChange={e => setLocalMap({ ...localMap, customListName: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
+
                                     {localMap.isMultiList && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                             <div>
@@ -148,13 +220,24 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Title or ID (Required)</label>
                                 <select
                                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     value={localMap.title}
                                     onChange={e => setLocalMap({ ...localMap, title: e.target.value })}
+                                >
+                                    <option value="">-- Select Column --</option>
+                                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Year</label>
+                                <select
+                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={localMap.year || ''}
+                                    onChange={e => setLocalMap({ ...localMap, year: e.target.value })}
                                 >
                                     <option value="">-- Select Column --</option>
                                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
@@ -261,6 +344,36 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                                     {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapeYearSelector ? <span>Preview: <strong className="text-gray-800">{scrapedPreview.year || 'None'}</strong></span> : null)}
                                                 </div>
                                             </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-600 mb-1">
+                                                    Poster CSS Selector
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g., img.poster"
+                                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    value={localMap.scrapePosterSelector || ''}
+                                                    onChange={e => setLocalMap({ ...localMap, scrapePosterSelector: e.target.value })}
+                                                />
+                                                <div className="mt-1 text-xs text-gray-500 h-4 truncate">
+                                                    {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapePosterSelector ? <span>Preview: <strong className="text-gray-800 truncate">{scrapedPreview.poster ? 'Found' : 'None'}</strong></span> : null)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-600 mb-1">
+                                                    Synopsis CSS Selector
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g., .description"
+                                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                    value={localMap.scrapeSynopsisSelector || ''}
+                                                    onChange={e => setLocalMap({ ...localMap, scrapeSynopsisSelector: e.target.value })}
+                                                />
+                                                <div className="mt-1 text-xs text-gray-500 h-4 truncate">
+                                                    {isScraping ? <em className="text-gray-400">Fetching preview...</em> : (localMap.scrapeSynopsisSelector ? <span>Preview: <strong className="text-gray-800 truncate">{scrapedPreview.synopsis ? 'Found' : 'None'}</strong></span> : null)}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -305,14 +418,29 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                         </div>
 
                         <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Date Seen (Optional)</label>
-                            <select
-                                className="w-full p-2 border border-gray-300 rounded md:w-1/2"
-                                value={localMap.date} onChange={e => setLocalMap({ ...localMap, date: e.target.value })}
-                            >
-                                <option value="">-- Optional --</option>
-                                {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                            </select>
+                            {localMap.category === 'lists' ? (
+                                <>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">List Order (Optional)</label>
+                                    <select
+                                        className="w-full p-2 border border-gray-300 rounded md:w-1/2"
+                                        value={localMap.order || ''} onChange={e => setLocalMap({ ...localMap, order: e.target.value })}
+                                    >
+                                        <option value="">-- Optional --</option>
+                                        {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                </>
+                            ) : (
+                                <>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Date Seen (Optional)</label>
+                                    <select
+                                        className="w-full p-2 border border-gray-300 rounded md:w-1/2"
+                                        value={localMap.date} onChange={e => setLocalMap({ ...localMap, date: e.target.value })}
+                                    >
+                                        <option value="">-- Optional --</option>
+                                        {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -329,10 +457,12 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                                 <td className="py-2 pr-4 font-semibold text-gray-600 whitespace-nowrap">
                                                     {key}
                                                     {key === localMap.title && <span className="ml-2 inline-block px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">Title</span>}
+                                                    {key === localMap.year && <span className="ml-2 inline-block px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-xs">Year</span>}
                                                     {key === localMap.type && <span className="ml-2 inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">Type</span>}
                                                     {localMap.hasSeries && key === localMap.season && <span className="ml-2 inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Season</span>}
                                                     {localMap.hasSeries && key === localMap.episode && <span className="ml-2 inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Episode</span>}
-                                                    {key === localMap.date && <span className="ml-2 inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">Date</span>}
+                                                    {localMap.category !== 'lists' && key === localMap.date && <span className="ml-2 inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">Date</span>}
+                                                    {localMap.category === 'lists' && key === localMap.order && <span className="ml-2 inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">Order</span>}
                                                     {key === localMap.scrapeUrlColumn && <span className="ml-2 inline-block px-2 py-0.5 bg-gray-200 text-gray-800 rounded text-xs border border-gray-300">URL</span>}
                                                 </td>
                                                 <td className="py-2 text-gray-800 truncate max-w-xs">{String(val || '')}</td>
@@ -362,12 +492,16 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                     baseUrl={localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn] ? sampleRow[localMap.scrapeUrlColumn] : (localMap.scrapeBaseUrl || '')}
                     initialTitleSelector={localMap.scrapeTitleSelector || ''}
                     initialYearSelector={localMap.scrapeYearSelector || ''}
+                    initialPosterSelector={localMap.scrapePosterSelector || ''}
+                    initialSynopsisSelector={localMap.scrapeSynopsisSelector || ''}
                     onClose={() => setShowVisualizer(false)}
-                    onSave={(titleSelector, yearSelector) => {
-                        setLocalMap({ 
-                            ...localMap, 
+                    onSave={(titleSelector, yearSelector, posterSelector, synopsisSelector) => {
+                        setLocalMap({
+                            ...localMap,
                             scrapeTitleSelector: titleSelector,
-                            scrapeYearSelector: yearSelector
+                            scrapeYearSelector: yearSelector,
+                            scrapePosterSelector: posterSelector,
+                            scrapeSynopsisSelector: synopsisSelector
                         });
                         setShowVisualizer(false);
                     }}

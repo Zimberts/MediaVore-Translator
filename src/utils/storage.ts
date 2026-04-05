@@ -5,16 +5,19 @@ export interface TypeValues {
 
 export interface FieldMapping {
   title: string;
+  year?: string;
   type: string;
   season: string;
   episode: string;
   date: string;
+  order?: string;
   hasSeries: boolean;
   typeValues: TypeValues | null;
   savedAt: string | null;
   category?: string;
   listNameColumn?: string;
   isMultiList?: boolean;
+  customListName?: string;
   likesListName?: string;
   scrapeBaseUrl?: string;
   scrapeTitleSelector?: string;
@@ -22,14 +25,20 @@ export interface FieldMapping {
   isIdMode?: boolean;
   scrapeSeriesBaseUrl?: string;
   scrapeUrlColumn?: string;
+  poster?: string;
+  synopsis?: string;
+  scrapePosterSelector?: string;
+  scrapeSynopsisSelector?: string;
 }
 
 export const defaultFieldMapping: FieldMapping = {
   title: '',
+  year: '',
   type: '',
   season: '',
   episode: '',
   date: '',
+  order: '',
   hasSeries: false,
   typeValues: { series: 'Serie,TV', movie: 'Movie,Film' },
   savedAt: null,
@@ -62,10 +71,12 @@ export function getMapping(storage: Storage = window.localStorage): FieldMapping
 
     return {
       title: storage.getItem(_key('title')) || '',
+      year: storage.getItem(_key('year')) || '',
       type: storage.getItem(_key('type')) || '',
       season: storage.getItem(_key('season')) || '',
       episode: storage.getItem(_key('episode')) || '',
       date: storage.getItem(_key('date')) || '',
+      order: storage.getItem(_key('order')) || '',
       hasSeries: storage.getItem(_key('has_series')) === '1',
       typeValues: tv,
       category: storage.getItem(_key('category')) || '',
@@ -89,10 +100,12 @@ export function saveMapping(map: FieldMapping, storage: Storage = window.localSt
   if (!storage) return false;
   try {
     storage.setItem(_key('title'), map.title || '');
+    storage.setItem(_key('year'), map.year || '');
     storage.setItem(_key('type'), map.type || '');
     storage.setItem(_key('season'), map.season || '');
     storage.setItem(_key('episode'), map.episode || '');
     storage.setItem(_key('date'), map.date || '');
+    storage.setItem(_key('order'), map.order || '');
     storage.setItem(_key('has_series'), map.hasSeries ? '1' : '0');
     storage.setItem(_key('category'), map.category || '');
     storage.setItem(_key('list_name_column'), map.listNameColumn || '');
@@ -134,10 +147,12 @@ export function exportMapping(map: FieldMapping): string {
   return JSON.stringify(
     {
       title: map.title || '',
+      year: map.year || '',
       type: map.type || '',
       season: map.season || '',
       episode: map.episode || '',
       date: map.date || '',
+      order: map.order || '',
       hasSeries: !!map.hasSeries,
       typeValues: map.typeValues || null,
       category: map.category || '',
@@ -160,10 +175,12 @@ export function importMapping(obj: Partial<FieldMapping>, storage: Storage = win
   if (!obj) return false;
   const map: FieldMapping = {
     title: obj.title || '',
+    year: obj.year || '',
     type: obj.type || '',
     season: obj.season || '',
     episode: obj.episode || '',
     date: obj.date || '',
+    order: obj.order || '',
     hasSeries: !!obj.hasSeries,
     typeValues: obj.typeValues || defaultFieldMapping.typeValues,
     category: obj.category || '',
