@@ -42,4 +42,4 @@ Step 1 of the app. Handles ingesting uploaded file objects via Dropzone logic.
 
 Auxiliary modals ensuring clean UI without bloating standard pages.
 - `SettingsModal.tsx`: Accepts TMDB Keys, Toggle Toggles (Auto Confirm), and local Storage cache clearing.
-- `FieldMapperModal.tsx`: Secondary modal for specific field values (e.g. Series vs Season fields).
+- `FieldMapperModal.tsx`: Secondary modal for specific field values. It handles the "Content" configuration (toggling Movies and TV Series), dynamically showing conditional inputs like Season/Episode or Media Type values based on whether the dataset contains purely movies, purely series, or a mix of both.

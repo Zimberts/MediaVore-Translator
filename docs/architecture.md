@@ -5,7 +5,7 @@ MediaVore Translator is built as a single-page React application (SPA). All proc
 ## High-Level Data Flow
 
 1. **File Ingestion:** The user selects a file (CSV, JSON, YAML). `src/utils/parsers.ts` parses the raw data into a structured array of generic row objects (`parsedFiles`).
-2. **Column Mapping (`SetupPanel.tsx`):** The user interactively maps standard MediaVore fields (Title, Year, Type, Season, Episode) to the columns available in their ingested file. They can specify if the title field is literal text, or a URL that needs scraping.
+2. **Column Mapping (`SetupPanel.tsx`):** The user interactively maps standard MediaVore fields (Title, Year, Type, Season, Episode) to the columns available in their ingested file. This includes configuring the dataset's "Content" (whether it contains `hasMovies`, `hasSeries`, or both). They can specify if the title field is literal text, or a URL that needs scraping.
 3. **Data Distillation:** `MatchContainer.tsx` digests all parsed rows across all loaded files into a streamlined list of *unique* entities (`titlesList`). Duplicates are automatically pruned so each show or movie is only searched once.
 4. **Data Population:**
    - **Scraping:** If an item is mapped via a URL, `scrapeData` fetches the title using CORS proxies and CSS Selectors.

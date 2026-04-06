@@ -188,7 +188,9 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                                                     {map.scrapeUrlColumn ? preview(map.scrapeUrlColumn) : <span className="text-gray-600">Base URL matching ID</span>}
                                                                 </div>
                                                             )}
-                                                            <div><span className="font-bold w-20 inline-block">Type:</span> {preview(map.type)}</div>
+                                                            {map.hasMovies && map.hasSeries && (
+                                                                <div><span className="font-bold w-20 inline-block">Type:</span> {preview(map.type)}</div>
+                                                            )}
                                                             {map.hasSeries && (
                                                                 <>
                                                                     <div><span className="font-bold w-20 inline-block">Season:</span> {preview(map.season)}</div>

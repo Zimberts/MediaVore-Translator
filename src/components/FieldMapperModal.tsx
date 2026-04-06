@@ -220,7 +220,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Title or ID (Required)</label>
                                 <select
@@ -240,17 +240,6 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                     onChange={e => setLocalMap({ ...localMap, year: e.target.value })}
                                 >
                                     <option value="">-- Select Column --</option>
-                                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Media Type</label>
-                                <select
-                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    value={localMap.type}
-                                    onChange={e => setLocalMap({ ...localMap, type: e.target.value })}
-                                >
-                                    <option value="">-- Auto-detect --</option>
                                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
                                 </select>
                             </div>
@@ -381,23 +370,37 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                         </div>
 
                         <div className="border border-gray-200 p-4 rounded">
-                            <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                    checked={localMap.hasSeries}
-                                    onChange={e => setLocalMap({ ...localMap, hasSeries: e.target.checked })}
-                                />
-                                <span className="font-bold text-gray-700">Dataset contains TV Series</span>
-                            </label>
+                            <div className="mb-3">
+                                <span className="block text-sm font-bold text-gray-700 mb-2">Content</span>
+                                <div className="flex items-center gap-6">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                            checked={localMap.hasMovies ?? true}
+                                            onChange={e => setLocalMap({ ...localMap, hasMovies: e.target.checked })}
+                                        />
+                                        <span className="font-bold text-gray-700">Movies</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                            checked={localMap.hasSeries || false}
+                                            onChange={e => setLocalMap({ ...localMap, hasSeries: e.target.checked })}
+                                        />
+                                        <span className="font-bold text-gray-700">TV Series</span>
+                                    </label>
+                                </div>
+                            </div>
 
                             {localMap.hasSeries && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 bg-gray-50 p-3 rounded">
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Season Column</label>
                                         <select
-                                            className="w-full p-2 border border-gray-300 rounded"
-                                            value={localMap.season} onChange={e => setLocalMap({ ...localMap, season: e.target.value })}
+                                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            value={localMap.season || ''} onChange={e => setLocalMap({ ...localMap, season: e.target.value })}
                                         >
                                             <option value="">-- Optional --</option>
                                             {headers.map(h => <option key={h} value={h}>{h}</option>)}
@@ -406,12 +409,67 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Episode Column</label>
                                         <select
-                                            className="w-full p-2 border border-gray-300 rounded"
-                                            value={localMap.episode} onChange={e => setLocalMap({ ...localMap, episode: e.target.value })}
+                                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            value={localMap.episode || ''} onChange={e => setLocalMap({ ...localMap, episode: e.target.value })}
                                         >
                                             <option value="">-- Optional --</option>
                                             {headers.map(h => <option key={h} value={h}>{h}</option>)}
                                         </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {localMap.hasMovies && localMap.hasSeries && (
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-3">Differentiate Movies & Series</h4>
+                                    <div className={`grid grid-cols-1 ${localMap.type ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-4 bg-gray-50 p-3 rounded text-left`}>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Media Type Column</label>
+                                            <select
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                value={localMap.type || ''}
+                                                onChange={e => setLocalMap({ ...localMap, type: e.target.value })}
+                                            >
+                                                <option value="">-- None --</option>
+                                                {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                            </select>
+                                        </div>
+                                        {localMap.type && (
+                                            <>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-1">Tags for Movies</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. Movie,Film"
+                                                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                        value={localMap.typeValues?.movie || ''}
+                                                        onChange={e => setLocalMap({
+                                                            ...localMap,
+                                                            typeValues: {
+                                                                series: localMap.typeValues?.series || 'Serie,TV',
+                                                                movie: e.target.value
+                                                            }
+                                                        })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-1">Tags for Series</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. Serie,TV"
+                                                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                        value={localMap.typeValues?.series || ''}
+                                                        onChange={e => setLocalMap({
+                                                            ...localMap,
+                                                            typeValues: {
+                                                                movie: localMap.typeValues?.movie || 'Movie,Film',
+                                                                series: e.target.value
+                                                            }
+                                                        })}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             )}

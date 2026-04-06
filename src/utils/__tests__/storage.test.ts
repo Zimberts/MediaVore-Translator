@@ -17,7 +17,7 @@ describe('Storage Mapping Utils', () => {
     const storage = makeStorage();
     const map: FieldMapping = {
       title: 'Name', type: 'Type', season: 'S', episode: 'E', date: 'Date',
-      hasSeries: true, typeValues: null, savedAt: null
+      hasSeries: true, hasMovies: true, typeValues: null, savedAt: null
     };
 
     const ok = saveMapping(map, storage);
@@ -30,13 +30,14 @@ describe('Storage Mapping Utils', () => {
     expect(got.episode).toBe('E');
     expect(got.date).toBe('Date');
     expect(got.hasSeries).toBe(true);
+    expect(got.hasMovies).toBe(true);
   });
 
   it('should export and import mapping', () => {
     const storage = makeStorage();
     const map: FieldMapping = {
       title: 'T', type: '', season: '', episode: '', date: '',
-      hasSeries: false, typeValues: null, savedAt: null
+      hasSeries: false, hasMovies: true, typeValues: null, savedAt: null
     };
 
     saveMapping(map, storage);
@@ -56,6 +57,7 @@ describe('Storage Mapping Utils', () => {
     const map: FieldMapping = {
       title: 'Title', type: 'Type', season: '', episode: '', date: '',
       hasSeries: true,
+      hasMovies: true,
       typeValues: { series: 'Serie,TV', movie: 'Movie,Film' },
       savedAt: null
     };

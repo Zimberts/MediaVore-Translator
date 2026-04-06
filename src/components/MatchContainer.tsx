@@ -58,11 +58,16 @@ export function MatchContainer() {
                 t = t.trim();
                 if (!t) return;
 
-                const isTv = currentMapping.hasSeries && (
-                    (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(row[currentMapping.type])) ||
-                    (currentMapping.season && row[currentMapping.season]) ||
-                    (currentMapping.episode && row[currentMapping.episode])
-                );
+                let isTv = false;
+                if (currentMapping.hasSeries && !currentMapping.hasMovies) {
+                    isTv = true;
+                } else if (currentMapping.hasSeries && currentMapping.hasMovies) {
+                    isTv = !!(
+                        (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(String(row[currentMapping.type]))) ||
+                        (currentMapping.season && row[currentMapping.season]) ||
+                        (currentMapping.episode && row[currentMapping.episode])
+                    );
+                }
 
                 const typeStr = isTv ? 'tv' : 'movie';
                 
@@ -238,11 +243,16 @@ export function MatchContainer() {
                     const titleStr = typeof titleRaw === 'string' ? titleRaw.trim() : '';
                     if (!titleStr) return;
 
-                    const isTv = currentMapping.hasSeries && (
-                        (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(row[currentMapping.type])) ||
-                        (currentMapping.season && row[currentMapping.season]) ||
-                        (currentMapping.episode && row[currentMapping.episode])
-                    );
+                    let isTv = false;
+                    if (currentMapping.hasSeries && !currentMapping.hasMovies) {
+                        isTv = true;
+                    } else if (currentMapping.hasSeries && currentMapping.hasMovies) {
+                        isTv = !!(
+                            (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(String(row[currentMapping.type]))) ||
+                            (currentMapping.season && row[currentMapping.season]) ||
+                            (currentMapping.episode && row[currentMapping.episode])
+                        );
+                    }
 
                     const typeStr = isTv ? 'tv' : 'movie';
                     
