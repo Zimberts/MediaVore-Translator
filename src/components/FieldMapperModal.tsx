@@ -27,12 +27,12 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
     const [showVisualizer, setShowVisualizer] = useState<boolean>(false);
     const sampleRow = file?.rows?.[0];
 
-    const [scrapedPreview, setScrapedPreview] = useState<{title?: string, year?: string, poster?: string, synopsis?: string}>({});
+    const [scrapedPreview, setScrapedPreview] = useState<{ title?: string, year?: string, poster?: string, synopsis?: string }>({});
     const [isScraping, setIsScraping] = useState(false);
 
     useEffect(() => {
-        const sampleUrl = localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn] 
-            ? sampleRow[localMap.scrapeUrlColumn] 
+        const sampleUrl = localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn]
+            ? sampleRow[localMap.scrapeUrlColumn]
             : (localMap.scrapeBaseUrl ? localMap.scrapeBaseUrl.replace('{id}', String(sampleRow?.[localMap.title || ''])) : null);
 
         if (!sampleUrl || (!localMap.scrapeTitleSelector && !localMap.scrapeYearSelector && !localMap.scrapePosterSelector && !localMap.scrapeSynopsisSelector)) return;
@@ -68,8 +68,8 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
             }
         };
 
-        const currentSampleUrl = localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn] 
-            ? sampleRow[localMap.scrapeUrlColumn] 
+        const currentSampleUrl = localMap.scrapeUrlColumn && sampleRow?.[localMap.scrapeUrlColumn]
+            ? sampleRow[localMap.scrapeUrlColumn]
             : (localMap.scrapeBaseUrl ? localMap.scrapeBaseUrl.replace('{id}', 'sample') : null);
 
         const currentPattern = getBaseUrlPattern(currentSampleUrl as string);
@@ -77,10 +77,10 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
         if (currentPattern && (localMap.scrapeTitleSelector || localMap.scrapeYearSelector || localMap.scrapePosterSelector || localMap.scrapeSynopsisSelector)) {
             parsedFiles.forEach(pf => {
                 if (pf.fileName === fileName) return;
-                
+
                 const existingMap = fileMappings[pf.fileName];
                 if (existingMap?.scrapeTitleSelector || existingMap?.scrapeYearSelector || existingMap?.scrapePosterSelector || existingMap?.scrapeSynopsisSelector) return;
-                
+
                 const targetRow = pf.rows[0];
                 if (!targetRow) return;
 
@@ -97,13 +97,13 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                     const targetPattern = getBaseUrlPattern(targetUrl);
                     if (targetPattern === currentPattern) {
                         const newMap = existingMap ? { ...existingMap } : { ...defaultFieldMapping };
-                        
+
                         if (!newMap.scrapeUrlColumn && !newMap.scrapeBaseUrl) {
                             newMap.scrapeUrlColumn = localMap.scrapeUrlColumn;
                             newMap.scrapeBaseUrl = localMap.scrapeBaseUrl;
                             newMap.isIdMode = localMap.isIdMode;
                         }
-                        
+
                         newMap.scrapeTitleSelector = localMap.scrapeTitleSelector;
                         newMap.scrapeYearSelector = localMap.scrapeYearSelector;
                         newMap.scrapePosterSelector = localMap.scrapePosterSelector;
@@ -122,7 +122,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
             acc[f.fileName] = f.rows.length;
             return acc;
         }, {} as Record<string, number>);
-        
+
         const suggested = autoSuggestMapping(headers, file?.rows || [], totalRowsInAllFiles);
         let cat = suggested.category;
         if (!cat) {
@@ -294,7 +294,7 @@ export function FieldMapperModal({ fileName, onClose }: { fileName: string, onCl
                                             </div>
                                         )}
                                         <div className="mt-2 text-right">
-                                            <button 
+                                            <button
                                                 onClick={(e) => { e.preventDefault(); setShowVisualizer(true); }}
                                                 disabled={!localMap.scrapeBaseUrl && !localMap.scrapeUrlColumn}
                                                 className="bg-blue-100 hover:bg-blue-200 text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed font-bold px-3 py-1.5 rounded text-sm transition-colors border border-blue-200 shadow-sm"

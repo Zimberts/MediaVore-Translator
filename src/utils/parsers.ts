@@ -13,7 +13,7 @@ export function parseCSV(text: string): ParsedCSV {
   if (!text) return { headers: [], rows: [] };
   const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length === 0) return { headers: [], rows: [] };
-  
+
   let headerIndex = 0;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes(',') || lines[i].includes(';')) {
@@ -21,15 +21,15 @@ export function parseCSV(text: string): ParsedCSV {
       break;
     }
   }
-  
+
   const headers = splitCSVLine(lines[headerIndex]);
   const rows: Record<string, any>[] = [];
-  
+
   for (let i = headerIndex + 1; i < lines.length; i++) {
     const line = lines[i];
     if (headers.length > 1 && !line.includes(',') && !line.includes(';')) continue;
     if (line === lines[headerIndex]) continue;
-    
+
     const cols = splitCSVLine(line);
     if (cols.length === 0) continue;
     const row: Record<string, any> = {};
@@ -43,11 +43,11 @@ export function parseCSV(text: string): ParsedCSV {
 
 export function parseCSVBlocks(text: string): ParsedCSV[] {
   if (!text) return [{ headers: [], rows: [] }];
-  
+
   const lines = text.split(/\r?\n/);
   const blocks: string[][] = [];
   let currentBlock: string[] = [];
-  
+
   for (let i = 0; i < lines.length; i++) {
      const line = lines[i].trim();
      if (line.length === 0) {
@@ -69,7 +69,7 @@ export function parseCSVBlocks(text: string): ParsedCSV[] {
           results.push(parsed);
       }
   }
-  
+
   if (results.length === 0) return [{ headers: [], rows: [] }];
   return results;
 }

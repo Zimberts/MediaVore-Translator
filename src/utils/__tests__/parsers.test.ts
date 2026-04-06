@@ -59,15 +59,15 @@ describe('Parsers', () => {
     const zip = new JSZip();
     zip.file('test1.csv', 'Name,Type\nMovie1,movie');
     zip.file('test2.json', JSON.stringify([{ Name: 'Movie2', Type: 'movie' }]));
-    
+
     // JSZip generateAsync can create various formats. Using Blob for browsers
     // In node environment, we can generate a uint8array and treat it as a Blob
     const content = await zip.generateAsync({ type: 'uint8array' });
     const blob = new Blob([content], { type: 'application/zip' });
-    
+
     const results = await parseZipContent(blob);
     expect(results).toHaveLength(2);
-    
+
     const csvResult = results.find(r => r.fileName === 'test1.csv');
     expect(csvResult).toBeDefined();
     expect(csvResult?.rows[0].Name).toBe('Movie1');

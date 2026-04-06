@@ -43,11 +43,11 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                     blocks.forEach((block, i) => {
                         if (block.rows.length === 0) return;
                         const nameSuffix = blocks.length > 1 ? ` (${i + 1})` : '';
-                        newParsedFiles.push({ 
-                            fileName: `${file.name}${nameSuffix}`, 
-                            headers: block.headers, 
-                            rows: block.rows, 
-                            category: file.name 
+                        newParsedFiles.push({
+                            fileName: `${file.name}${nameSuffix}`,
+                            headers: block.headers,
+                            rows: block.rows,
+                            category: file.name
                         });
                     });
                 }
@@ -73,31 +73,31 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
 
             for (const newFile of newParsedFiles) {
                 const existingMap = fileMappings[newFile.fileName];
-                    const suggestion = autoSuggestMapping(newFile.headers, newFile.rows, totalRowsInAllFiles);
-                    
-                    const finalMapping = { 
-                        ...defaultFieldMapping, 
-                        ...suggestion 
-                    };
-                    
-                    if (existingMap) {
-                        for (const key of Object.keys(existingMap)) {
+                const suggestion = autoSuggestMapping(newFile.headers, newFile.rows, totalRowsInAllFiles);
+
+                const finalMapping = {
+                    ...defaultFieldMapping,
+                    ...suggestion
+                };
+
+                if (existingMap) {
+                    for (const key of Object.keys(existingMap)) {
+                        // @ts-ignore
+                        if (existingMap[key] !== '' && existingMap[key] !== null && existingMap[key] !== undefined) {
                             // @ts-ignore
-                            if (existingMap[key] !== '' && existingMap[key] !== null && existingMap[key] !== undefined) {
-                                // @ts-ignore
-                                finalMapping[key] = existingMap[key];
-                            }
+                            finalMapping[key] = existingMap[key];
                         }
                     }
-
-                    updateFileMapping(newFile.fileName, finalMapping as any);
-
-                    if (existingMap?.category) {
-                        newFile.category = existingMap.category;
-                    } else if (suggestion.category) {
-                        newFile.category = suggestion.category as string;
-                    }
                 }
+
+                updateFileMapping(newFile.fileName, finalMapping as any);
+
+                if (existingMap?.category) {
+                    newFile.category = existingMap.category;
+                } else if (suggestion.category) {
+                    newFile.category = suggestion.category as string;
+                }
+            }
 
             setParsedFiles(addedFiles);
         }
@@ -184,7 +184,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                                         <>
                                                             <div><span className="font-bold w-20 inline-block">Title:</span> {preview(map.title)}</div>                                                                {map.year && <div><span className="font-bold w-20 inline-block">Year:</span> {preview(map.year)}</div>}                                                            {(map.scrapeUrlColumn || map.scrapeBaseUrl) && (
                                                                 <div>
-                                                                    <span className="font-bold w-20 inline-block">URL:</span> 
+                                                                    <span className="font-bold w-20 inline-block">URL:</span>
                                                                     {map.scrapeUrlColumn ? preview(map.scrapeUrlColumn) : <span className="text-gray-600">Base URL matching ID</span>}
                                                                 </div>
                                                             )}

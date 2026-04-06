@@ -3,7 +3,7 @@ import { TMDBResult } from '../api/tmdb';
 
 interface TitleCardProps {
     onManualSearch?: (newSearch: { title: string, year?: string, type: string }) => void;
-    customQuery?: {title: string, year?: string, type: string, poster?: string, synopsis?: string};
+    customQuery?: { title: string, year?: string, type: string, poster?: string, synopsis?: string };
     item: { title: string, type: string };
     sourceUrl?: string;
     results?: TMDBResult[] | 'error' | 'scrape_error';
@@ -13,7 +13,7 @@ interface TitleCardProps {
 export function TitleCard({ item, results, onConfirm, onManualSearch, customQuery, sourceUrl }: TitleCardProps) {
     const [expanded, setExpanded] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    
+
     // Use customQuery values if provided, otherwise fallback to item values
     const currentTitle = customQuery?.title || item.title;
     const currentYear = customQuery?.year || '';
@@ -120,9 +120,9 @@ export function TitleCard({ item, results, onConfirm, onManualSearch, customQuer
                         Edit Search
                     </button>
                     {(sourceUrl || isUrl) && (
-                        <a 
-                            href={sourceUrl || item.title} 
-                            target="_blank" 
+                        <a
+                            href={sourceUrl || item.title}
+                            target="_blank"
                             rel="noreferrer"
                             className="p-1 px-2 hover:bg-gray-200 text-blue-500 hover:text-blue-700 rounded text-xs font-bold transition-colors flex items-center gap-1"
                             title="View source page"
