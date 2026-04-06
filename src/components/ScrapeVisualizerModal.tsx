@@ -32,7 +32,7 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
   const [yearValue, setYearValue] = useState<string>('');
   const [posterValue, setPosterValue] = useState<string>('');
   const [synopsisValue, setSynopsisValue] = useState<string>('');
-  
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const cleanHtml = (html: string, sourceUrl: string): string => {
@@ -53,29 +53,29 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
         doc.head.prepend(base);
 
         doc.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
-            el.removeAttribute('crossorigin');
-            el.removeAttribute('integrity');
-            const href = el.getAttribute('href');
-            if (href) {
-                if (href.startsWith('//')) {
-                    el.setAttribute('href', urlObj.protocol + href);
-                } else if (href.startsWith('/')) {
-                    el.setAttribute('href', urlObj.origin + href);
-                }
+          el.removeAttribute('crossorigin');
+          el.removeAttribute('integrity');
+          const href = el.getAttribute('href');
+          if (href) {
+            if (href.startsWith('//')) {
+              el.setAttribute('href', urlObj.protocol + href);
+            } else if (href.startsWith('/')) {
+              el.setAttribute('href', urlObj.origin + href);
             }
+          }
         });
-        
+
         doc.querySelectorAll('img').forEach(el => {
-            const src = el.getAttribute('src');
-            if (src) {
-                if (src.startsWith('//')) {
-                    el.setAttribute('src', urlObj.protocol + src);
-                } else if (src.startsWith('/')) {
-                    el.setAttribute('src', urlObj.origin + src);
-                }
+          const src = el.getAttribute('src');
+          if (src) {
+            if (src.startsWith('//')) {
+              el.setAttribute('src', urlObj.protocol + src);
+            } else if (src.startsWith('/')) {
+              el.setAttribute('src', urlObj.origin + src);
             }
+          }
         });
-      } catch(e) {}
+      } catch (e) { }
 
       // Inject highlight CSS
       const style = doc.createElement('style');
@@ -133,7 +133,7 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
         else if (doc.title) setTitleSelector('title');
       }
     }
-    
+
     if (!yearSelector) {
       const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
       let node;
@@ -144,8 +144,8 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
           if (parent && ['SPAN', 'P', 'DIV', 'H1', 'H2', 'H3'].includes(parent.tagName.toUpperCase())) {
             const txt = node.textContent.trim();
             if (txt.length < 15) { // Likely just a short string with year
-                setYearSelector(generateSelector(parent));
-                break;
+              setYearSelector(generateSelector(parent));
+              break;
             }
           }
         }
@@ -154,54 +154,54 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
   };
 
   const updateLiveValues = (doc: Document) => {
-      try {
-          if (titleSelector) {
-              const el = doc.querySelector(titleSelector);
-              let val = el?.textContent?.trim() || '';
-              // same cleanups as scraper
-              val = val.replace(/ - IMDb$/, '').replace(/ \([^)]+\) - IMDb$/, '').replace(/ - Letterboxd$/, '').replace(/ — The Movie Database \(TMDB\)$/, '').replace(/ — TMDB$/, '').trim();
-              setTitleValue(val);
-          } else {
-              setTitleValue('');
-          }
-      } catch (e) { setTitleValue(''); }
+    try {
+      if (titleSelector) {
+        const el = doc.querySelector(titleSelector);
+        let val = el?.textContent?.trim() || '';
+        // same cleanups as scraper
+        val = val.replace(/ - IMDb$/, '').replace(/ \([^)]+\) - IMDb$/, '').replace(/ - Letterboxd$/, '').replace(/ — The Movie Database \(TMDB\)$/, '').replace(/ — TMDB$/, '').trim();
+        setTitleValue(val);
+      } else {
+        setTitleValue('');
+      }
+    } catch (e) { setTitleValue(''); }
 
-      try {
-          if (yearSelector) {
-              const el = doc.querySelector(yearSelector);
-              const text = el?.textContent?.trim() || '';
-              const match = text.match(/\d{4}/);
-              setYearValue(match ? match[0] : text);
-          } else {
-              setYearValue('');
-          }
-      } catch(e) { setYearValue(''); }
+    try {
+      if (yearSelector) {
+        const el = doc.querySelector(yearSelector);
+        const text = el?.textContent?.trim() || '';
+        const match = text.match(/\d{4}/);
+        setYearValue(match ? match[0] : text);
+      } else {
+        setYearValue('');
+      }
+    } catch (e) { setYearValue(''); }
 
-      try {
-          if (posterSelector) {
-              const el = doc.querySelector(posterSelector);
-              const src = el?.getAttribute('src') || el?.getAttribute('content') || el?.getAttribute('href') || '';
-              setPosterValue(src);
-          } else {
-              setPosterValue('');
-          }
-      } catch(e) { setPosterValue(''); }
+    try {
+      if (posterSelector) {
+        const el = doc.querySelector(posterSelector);
+        const src = el?.getAttribute('src') || el?.getAttribute('content') || el?.getAttribute('href') || '';
+        setPosterValue(src);
+      } else {
+        setPosterValue('');
+      }
+    } catch (e) { setPosterValue(''); }
 
-      try {
-          if (synopsisSelector) {
-              const el = doc.querySelector(synopsisSelector);
-              const text = el?.textContent?.trim() || el?.getAttribute('content') || '';
-              setSynopsisValue(text);
-          } else {
-              setSynopsisValue('');
-          }
-      } catch(e) { setSynopsisValue(''); }
+    try {
+      if (synopsisSelector) {
+        const el = doc.querySelector(synopsisSelector);
+        const text = el?.textContent?.trim() || el?.getAttribute('content') || '';
+        setSynopsisValue(text);
+      } else {
+        setSynopsisValue('');
+      }
+    } catch (e) { setSynopsisValue(''); }
   };
 
   useEffect(() => {
-      const doc = iframeRef.current?.contentDocument;
-      if (doc) updateLiveValues(doc);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const doc = iframeRef.current?.contentDocument;
+    if (doc) updateLiveValues(doc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htmlContent, titleSelector, yearSelector, posterSelector, synopsisSelector]);
 
   const handleFetchInfo = async (): Promise<void> => {
@@ -230,7 +230,7 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
       }
 
       const cleaned = cleanHtml(rawHtml, testUrl);
-      
+
       setHtmlContent(cleaned);
     } catch (err) {
       const errorMessage =
@@ -262,7 +262,7 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
 
       const target = e.target as HTMLElement;
       iframeDoc.querySelectorAll('.mediavore-highlight').forEach(el => el.classList.remove('mediavore-highlight'));
-      
+
       target.classList.add('mediavore-highlight');
       const selector = generateSelector(target);
 
@@ -277,33 +277,33 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
 
   useEffect(() => {
     const handlePick = (e: any) => {
-        const sel = e.detail.selector;
-        setActiveField(prev => {
-            if (prev === 'title') {
-                setTitleSelector(sel);
-                return 'year';
-            } else if (prev === 'year') {
-                setYearSelector(sel);
-                return 'poster';
-            } else if (prev === 'poster') {
-                setPosterSelector(sel);
-                return 'synopsis';
-            } else if (prev === 'synopsis') {
-                setSynopsisSelector(sel);
-                return 'synopsis';
-            }
-            return prev;
-        });
+      const sel = e.detail.selector;
+      setActiveField(prev => {
+        if (prev === 'title') {
+          setTitleSelector(sel);
+          return 'year';
+        } else if (prev === 'year') {
+          setYearSelector(sel);
+          return 'poster';
+        } else if (prev === 'poster') {
+          setPosterSelector(sel);
+          return 'synopsis';
+        } else if (prev === 'synopsis') {
+          setSynopsisSelector(sel);
+          return 'synopsis';
+        }
+        return prev;
+      });
     };
     window.addEventListener('mediavoreSelectorPicked', handlePick);
     return () => window.removeEventListener('mediavoreSelectorPicked', handlePick);
   }, []);
-  
+
   useEffect(() => {
     if (testUrl && testUrl.trim() !== '') {
-        handleFetchInfo();
+      handleFetchInfo();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -337,116 +337,116 @@ export function ScrapeVisualizerModal({ baseUrl, initialTitleSelector, initialYe
         </div>
 
         <div className="flex-1 overflow-hidden relative bg-gray-100 flex">
-            <div className="w-80 bg-white border-r border-gray-200 p-4 flex flex-col gap-4 overflow-y-auto z-10 shadow-lg">
-                <p className="text-sm text-gray-600">
-                    Hover over the fetched webpage and click elements to automatically generate their CSS selectors. 
+          <div className="w-80 bg-white border-r border-gray-200 p-4 flex flex-col gap-4 overflow-y-auto z-10 shadow-lg">
+            <p className="text-sm text-gray-600">
+              Hover over the fetched webpage and click elements to automatically generate their CSS selectors.
+            </p>
+
+            <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'title' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('title')}>
+              <label className="block text-sm font-bold text-gray-800 pointer-events-none">
+                Title Selector {activeField === 'title' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
+              </label>
+              <input
+                type="text"
+                value={titleSelector}
+                onChange={e => setTitleSelector(e.target.value)}
+                placeholder="e.g. h1.title"
+                className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-gray-600">Value: </span>
+                <span className="text-gray-900 break-words">{titleValue || <span className="text-gray-400 italic">None</span>}</span>
+              </div>
+            </div>
+
+            <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'year' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('year')}>
+              <label className="block text-sm font-bold text-gray-800 pointer-events-none">
+                Year Selector {activeField === 'year' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
+              </label>
+              <input
+                type="text"
+                value={yearSelector}
+                onChange={e => setYearSelector(e.target.value)}
+                placeholder="e.g. .release-date"
+                className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-gray-600">Value: </span>
+                <span className="text-gray-900 break-words">{yearValue || <span className="text-gray-400 italic">None</span>}</span>
+              </div>
+            </div>
+
+            <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'poster' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('poster')}>
+              <label className="block text-sm font-bold text-gray-800 pointer-events-none">
+                Poster Selector {activeField === 'poster' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
+              </label>
+              <input
+                type="text"
+                value={posterSelector}
+                onChange={e => setPosterSelector(e.target.value)}
+                placeholder="e.g. img.poster"
+                className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-gray-600">Value: </span>
+                <span className="text-gray-900 break-words truncate block">{posterValue ? 'Found Image' : <span className="text-gray-400 italic">None</span>}</span>
+              </div>
+            </div>
+
+            <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'synopsis' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('synopsis')}>
+              <label className="block text-sm font-bold text-gray-800 pointer-events-none">
+                Synopsis Selector {activeField === 'synopsis' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
+              </label>
+              <input
+                type="text"
+                value={synopsisSelector}
+                onChange={e => setSynopsisSelector(e.target.value)}
+                placeholder="e.g. .description"
+                className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-gray-600">Value: </span>
+                <span className="text-gray-900 break-words line-clamp-3">{synopsisValue || <span className="text-gray-400 italic">None</span>}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onSave(titleSelector, yearSelector, posterSelector, synopsisSelector)}
+              className="mt-auto bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold py-3 rounded shadow-sm w-full transition-colors"
+            >
+              Save Selectors
+            </button>
+          </div>
+
+          <div className="flex-1 bg-white relative">
+            {error ? (
+              <div className="p-8 text-center text-red-600 bg-red-50 m-4 rounded border border-red-200">
+                <p className="font-bold text-lg mb-2">Fetch Error</p>
+                <p>{error}</p>
+              </div>
+            ) : loading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                <div className="text-center">
+                  <p className="text-gray-600 font-semibold">Loading page...</p>
+                </div>
+              </div>
+            ) : htmlContent ? (
+              <iframe
+                ref={iframeRef}
+                srcDoc={htmlContent}
+                onLoad={handleIframeLoad}
+                className="w-full h-full border-none"
+                sandbox="allow-same-origin"
+                title="Web Scraper Visualizer"
+              />
+            ) : (
+              <div className="p-8 text-center text-gray-500 flex flex-col items-center justify-center h-full">
+                <p className="max-w-md mx-auto">
+                  Enter a URL to preview
                 </p>
-
-                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'title' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('title')}>
-                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
-                        Title Selector {activeField === 'title' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
-                    </label>
-                    <input 
-                        type="text" 
-                        value={titleSelector} 
-                        onChange={e => setTitleSelector(e.target.value)}
-                        placeholder="e.g. h1.title"
-                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <div className="text-xs">
-                        <span className="font-bold text-gray-600">Value: </span>
-                        <span className="text-gray-900 break-words">{titleValue || <span className="text-gray-400 italic">None</span>}</span>
-                    </div>
-                </div>
-
-                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'year' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('year')}>
-                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
-                        Year Selector {activeField === 'year' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
-                    </label>
-                    <input 
-                        type="text" 
-                        value={yearSelector} 
-                        onChange={e => setYearSelector(e.target.value)}
-                        placeholder="e.g. .release-date"
-                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <div className="text-xs">
-                        <span className="font-bold text-gray-600">Value: </span>
-                        <span className="text-gray-900 break-words">{yearValue || <span className="text-gray-400 italic">None</span>}</span>
-                    </div>
-                </div>
-
-                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'poster' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('poster')}>
-                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
-                        Poster Selector {activeField === 'poster' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
-                    </label>
-                    <input 
-                        type="text" 
-                        value={posterSelector} 
-                        onChange={e => setPosterSelector(e.target.value)}
-                        placeholder="e.g. img.poster"
-                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <div className="text-xs">
-                        <span className="font-bold text-gray-600">Value: </span>
-                        <span className="text-gray-900 break-words truncate block">{posterValue ? 'Found Image' : <span className="text-gray-400 italic">None</span>}</span>
-                    </div>
-                </div>
-
-                <div className={`p-3 rounded border-2 transition-all flex flex-col gap-2 cursor-pointer ${activeField === 'synopsis' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setActiveField('synopsis')}>
-                    <label className="block text-sm font-bold text-gray-800 pointer-events-none">
-                        Synopsis Selector {activeField === 'synopsis' && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-1">Active</span>}
-                    </label>
-                    <input 
-                        type="text" 
-                        value={synopsisSelector} 
-                        onChange={e => setSynopsisSelector(e.target.value)}
-                        placeholder="e.g. .description"
-                        className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <div className="text-xs">
-                        <span className="font-bold text-gray-600">Value: </span>
-                        <span className="text-gray-900 break-words line-clamp-3">{synopsisValue || <span className="text-gray-400 italic">None</span>}</span>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={() => onSave(titleSelector, yearSelector, posterSelector, synopsisSelector)}
-                    className="mt-auto bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold py-3 rounded shadow-sm w-full transition-colors"
-                >
-                    Save Selectors
-                </button>
-            </div>
-
-            <div className="flex-1 bg-white relative">
-                {error ? (
-                    <div className="p-8 text-center text-red-600 bg-red-50 m-4 rounded border border-red-200">
-                        <p className="font-bold text-lg mb-2">Fetch Error</p>
-                        <p>{error}</p>
-                    </div>
-                ) : loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-                        <div className="text-center">
-                            <p className="text-gray-600 font-semibold">Loading page...</p>
-                        </div>
-                    </div>
-                ) : htmlContent ? (
-                    <iframe 
-                        ref={iframeRef}
-                        srcDoc={htmlContent}
-                        onLoad={handleIframeLoad}
-                        className="w-full h-full border-none"
-                        sandbox="allow-same-origin"
-                        title="Web Scraper Visualizer"
-                    />
-                ) : (
-                    <div className="p-8 text-center text-gray-500 flex flex-col items-center justify-center h-full">
-                        <p className="max-w-md mx-auto">
-                            Enter a URL to preview
-                        </p>
-                    </div>
-                )}
-            </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

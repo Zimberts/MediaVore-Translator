@@ -70,7 +70,7 @@ export function MatchContainer() {
                 }
 
                 const typeStr = isTv ? 'tv' : 'movie';
-                
+
                 let y = currentMapping.year ? row[currentMapping.year] : undefined;
                 if (y && typeof y === 'number') y = String(y);
                 if (y && typeof y === 'string') y = y.trim();
@@ -198,8 +198,8 @@ export function MatchContainer() {
             }
         }, 150);
 
-        return () => { 
-            active = false; 
+        return () => {
+            active = false;
             clearTimeout(timeoutId);
         };
     }, [titlesList, confirmedMap, resultsCache, autoConfirm, confirmMatch, customQueries, currentPage, pageSize]);
@@ -255,7 +255,7 @@ export function MatchContainer() {
                     }
 
                     const typeStr = isTv ? 'tv' : 'movie';
-                    
+
                     let y = currentMapping.year ? row[currentMapping.year] : undefined;
                     if (y && typeof y === 'number') y = String(y);
                     if (y && typeof y === 'string') y = y.trim();
@@ -264,7 +264,7 @@ export function MatchContainer() {
 
                     const confirmed = confirmedMap[key];
                     if (!confirmed) return;
-                    
+
                     let dateStr = row[currentMapping.date] || '';
                     if (dateStr && dateStr.includes('/')) {
                         const parts = dateStr.split('/');
@@ -282,7 +282,7 @@ export function MatchContainer() {
 
                     const tmdbId = confirmed.id;
                     const type = isTv ? 'tv' : 'movie';
-                    
+
                     // Deduplicate identical combinations of movie, date, and exact list type
                     const dedupeKey = `${tmdbId}-${category}-${dateStr}`;
                     if (exportDedupe.has(dedupeKey)) return;
@@ -314,7 +314,7 @@ export function MatchContainer() {
                         notifications.push({
                             tmdbId, type, title, posterPath, releaseDate, seasonNumber, episodeNumber, autoNotify: 'true'
                         });
-                        
+
                         // Also add watchlist items into the generic lists payload so it yields a physical "Watchlist"
                         if (!listPositions[listName]) listPositions[listName] = 1;
                         lists.push({
@@ -361,8 +361,8 @@ export function MatchContainer() {
                         const details = await fetchDetails(notif.tmdbId, 'tv');
                         const status = details.status;
                         if (
-                            status === 'Returning Series' || 
-                            status === 'In Production' || 
+                            status === 'Returning Series' ||
+                            status === 'In Production' ||
                             status === 'Planned' ||
                             (!notif.releaseDate || new Date(notif.releaseDate) > now)
                         ) {

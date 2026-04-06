@@ -22,34 +22,34 @@ export async function scrapeData(
   synopsisSelector?: string
 ): Promise<ScrapeResult> {
   if (!url) return {};
-  
+
   try {
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch from proxy: ${response.statusText}`);
     }
-    
+
     const htmlContent = await response.text();
-    
+
     if (!htmlContent) {
       throw new Error('No content returned from proxy');
     }
-    
+
     // Parse HTML using DOMParser
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
-    
+
     const result: ScrapeResult = {};
-    
+
     if (titleSelector) {
       const titleElement = doc.querySelector(titleSelector);
       if (titleElement) {
         result.title = titleElement.textContent?.trim();
       }
     }
-    
+
     // Fallback if title is still missing
     if (!result.title) {
       const ogTitle = doc.querySelector('meta[property="og:title"]');
@@ -73,7 +73,7 @@ export async function scrapeData(
         .replace(/ — TMDB$/, '')
         .trim();
     }
-    
+
     if (yearSelector) {
       const yearElement = doc.querySelector(yearSelector);
       if (yearElement) {
@@ -85,7 +85,7 @@ export async function scrapeData(
         }
       }
     }
-    
+
     if (posterSelector) {
       const posterElement = doc.querySelector(posterSelector);
       if (posterElement) {
@@ -109,7 +109,7 @@ export async function scrapeData(
       const ogDesc = doc.querySelector('meta[property="og:description"]');
       if (ogDesc) result.synopsis = ogDesc.getAttribute('content')?.trim();
     }
-    
+
     return result;
   } catch (error) {
     console.error('Scrape error:', error);
