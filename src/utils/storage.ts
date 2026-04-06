@@ -12,6 +12,7 @@ export interface FieldMapping {
   date: string;
   order?: string;
   hasSeries: boolean;
+  hasMovies: boolean;
   typeValues: TypeValues | null;
   savedAt: string | null;
   category?: string;
@@ -40,6 +41,7 @@ export const defaultFieldMapping: FieldMapping = {
   date: '',
   order: '',
   hasSeries: false,
+  hasMovies: true,
   typeValues: { series: 'Serie,TV', movie: 'Movie,Film' },
   savedAt: null,
   category: '',
@@ -78,6 +80,7 @@ export function getMapping(storage: Storage = window.localStorage): FieldMapping
       date: storage.getItem(_key('date')) || '',
       order: storage.getItem(_key('order')) || '',
       hasSeries: storage.getItem(_key('has_series')) === '1',
+      hasMovies: storage.getItem(_key('has_movies')) !== '0',
       typeValues: tv,
       category: storage.getItem(_key('category')) || '',
       listNameColumn: storage.getItem(_key('list_name_column')) || '',
@@ -107,6 +110,7 @@ export function saveMapping(map: FieldMapping, storage: Storage = window.localSt
     storage.setItem(_key('date'), map.date || '');
     storage.setItem(_key('order'), map.order || '');
     storage.setItem(_key('has_series'), map.hasSeries ? '1' : '0');
+    storage.setItem(_key('has_movies'), map.hasMovies ? '1' : '0');
     storage.setItem(_key('category'), map.category || '');
     storage.setItem(_key('list_name_column'), map.listNameColumn || '');
     storage.setItem(_key('is_multi_list'), map.isMultiList ? '1' : '0');
@@ -182,6 +186,7 @@ export function importMapping(obj: Partial<FieldMapping>, storage: Storage = win
     date: obj.date || '',
     order: obj.order || '',
     hasSeries: !!obj.hasSeries,
+    hasMovies: obj.hasMovies !== undefined ? !!obj.hasMovies : true,
     typeValues: obj.typeValues || defaultFieldMapping.typeValues,
     category: obj.category || '',
     listNameColumn: obj.listNameColumn || '',
