@@ -1,8 +1,8 @@
 import { BlobReader, Uint8ArrayReader, Uint8ArrayWriter, ZipReader, configure } from '@zip.js/zip.js';
+import { FieldMapping } from './storage';
 
 // Archives are small: decompress on the main thread rather than in web workers
 configure({ useWebWorkers: false });
-import { FieldMapping } from './storage';
 
 // Lightweight format parsers
 
