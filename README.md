@@ -63,7 +63,7 @@ For a deep dive into the project's architecture, APIs, and overall structure, pl
 
 ## Usage
 
-- **TV Time:** select the CSV files extracted from your TV Time personal data export; they are detected and pre-mapped automatically. See [docs/tvtime-import.md](docs/tvtime-import.md).
+- **TV Time:** select your TV Time personal data ZIP (you will be asked for the password from the second email) or the extracted CSV files; they are detected and pre-mapped automatically. See [docs/tvtime-import.md](docs/tvtime-import.md).
 
 - Configure your file mapping with the intelligent Setup step.
 - The app will Auto-search unique titles against the TMDB API.

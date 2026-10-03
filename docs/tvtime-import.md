@@ -4,10 +4,7 @@ MediaVore Translator recognises the personal data export sent by TV Time (GDPR "
 
 ## Getting the files
 
-TV Time emails a password-protected `tv-time-personal-data.zip` and sends the password in a second email. The archive is encrypted, which the in-browser ZIP reader (JSZip) cannot open, so:
-
-1. Extract the archive locally with the password (`unzip -P '<password>' tv-time-personal-data.zip`).
-2. In the Setup step, select the extracted `.csv` files (selecting all of them is fine, the irrelevant ones are ignored). A re-zipped, unencrypted archive of the folder also works.
+TV Time emails a password-protected `tv-time-personal-data.zip` and sends the password in a second email. Select the ZIP in the Setup step: the app detects that it is encrypted and asks for the password (ZipCrypto and AES archives are read with `@zip.js/zip.js`, entirely in the browser). Selecting the extracted `.csv` files also works; irrelevant files are ignored.
 
 ## Detection
 

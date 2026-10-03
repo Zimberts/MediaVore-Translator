@@ -4,7 +4,7 @@ MediaVore Translator is built as a single-page React application (SPA). All proc
 
 ## High-Level Data Flow
 
-1. **File Ingestion:** The user selects a file (CSV, JSON, YAML). `src/utils/parsers.ts` parses the raw data into a structured array of generic row objects (`parsedFiles`). Known third-party exports are converted by an importer before mapping: a TV Time export (`src/importers/tvtime.ts`) is replaced by pre-mapped datasets, see [TV Time Import](tvtime-import.md).
+1. **File Ingestion:** The user selects a file (CSV, JSON, YAML). `src/utils/parsers.ts` parses the raw data into a structured array of generic row objects (`parsedFiles`). ZIP archives are read by `readZipEntries`, which prompts for a password when the archive is encrypted. Known third-party exports are converted by an importer before mapping: a TV Time export (`src/importers/tvtime.ts`) is replaced by pre-mapped datasets, see [TV Time Import](tvtime-import.md).
 2. **Column Mapping (`SetupPanel.tsx`):** The user interactively maps standard MediaVore fields (Title, Year, Type, Season, Episode) to the columns available in their ingested file. This includes configuring the dataset's "Content" (whether it contains `hasMovies`, `hasSeries`, or both). They can specify if the title field is literal text, or a URL that needs scraping.
 3. **Data Distillation:** `MatchContainer.tsx` digests all parsed rows across all loaded files into a streamlined list of *unique* entities (`titlesList`). Duplicates are automatically pruned so each show or movie is only searched once. The unique key of a row is computed by `buildRowKey` (`src/utils/rowKey.ts`), shared by matching and export: `tvdb:<id>::tv` when a `tvdbId` column is mapped, otherwise `title::year::type`.
 4. **Data Population:**
