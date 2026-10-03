@@ -1,5 +1,7 @@
 import { convertTVTimeExport, isTVTimeExport, splitTitleYear, titleFromAlphaKey, toISODate } from '../tvtime';
 import { buildRowKey } from '../../utils/rowKey';
+import { readZipEntries } from '../../utils/parsers';
+import JSZip from 'jszip';
 
 const MOVIE_A = '11111111-1111-1111-1111-111111111111';
 const MOVIE_B = '22222222-2222-2222-2222-222222222222';
@@ -95,5 +97,14 @@ describe('TV Time importer', () => {
 
   it('resolves favorite list entries to titles', () => {
     expect(byName['TV Time/likes'].rows.map(r => r.title)).toEqual(['Intouchables']);
+  });
+
+  it('reads an unencrypted ZIP of the export', async () => {
+    const zip = new JSZip();
+    files.forEach(f => zip.file(f.name, f.text));
+    const blob = await zip.generateAsync({ type: 'uint8array' });
+    const entries = await readZipEntries(blob as any);
+    expect(isTVTimeExport(entries.map(e => e.name))).toBe(true);
+    expect(convertTVTimeExport(entries)).toHaveLength(4);
   });
 });

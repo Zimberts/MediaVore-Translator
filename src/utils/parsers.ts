@@ -190,26 +190,37 @@ export function parseByFilename(name: string, text: string): ParsedCSV[] {
   return [{ headers: yRows.length > 0 ? Object.keys(yRows[0]) : [], rows: yRows }];
 }
 
-export async function parseZipContent(file: File | Blob): Promise<{ fileName: string, headers: string[], rows: Record<string, any>[] }[]> {
+// Read every file of a ZIP archive as text
+export async function readZipEntries(file: File | Blob): Promise<{ name: string, text: string }[]> {
   const zip = new JSZip();
   const loadedZip = await zip.loadAsync(file);
+  const entries: { name: string, text: string }[] = [];
+  for (const [path, zipEntry] of Object.entries(loadedZip.files)) {
+    if (zipEntry.dir) continue;
+    try {
+      entries.push({ name: path, text: await zipEntry.async('text') });
+    } catch (e) {
+      // ignore unreadable entries
+    }
+  }
+  return entries;
+}
+
+export async function parseZipContent(file: File | Blob): Promise<{ fileName: string, headers: string[], rows: Record<string, any>[] }[]> {
   const results: { fileName: string, headers: string[], rows: Record<string, any>[] }[] = [];
 
-  for (const [path, zipEntry] of Object.entries(loadedZip.files)) {
-    if (!zipEntry.dir) {
-      try {
-        const text = await zipEntry.async('text');
-        const blocks = parseByFilename(zipEntry.name, text);
-        for (let i = 0; i < blocks.length; i++) {
-          const { headers, rows } = blocks[i];
-          if (rows && rows.length > 0) {
-            const name = blocks.length > 1 ? `${path} (${i + 1})` : path;
-            results.push({ fileName: name, headers, rows });
-          }
+  for (const { name: path, text } of await readZipEntries(file)) {
+    try {
+      const blocks = parseByFilename(path, text);
+      for (let i = 0; i < blocks.length; i++) {
+        const { headers, rows } = blocks[i];
+        if (rows && rows.length > 0) {
+          const name = blocks.length > 1 ? `${path} (${i + 1})` : path;
+          results.push({ fileName: name, headers, rows });
         }
-      } catch (e) {
-        // ignore parsing errors and proceed thoroughly
       }
+    } catch (e) {
+      // ignore parsing errors and proceed thoroughly
     }
   }
   return results;
