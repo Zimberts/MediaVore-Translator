@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import JSZip from 'jszip';
 import { useAppContext } from '../contexts/AppContext';
 import { TitleCard } from './TitleCard';
-import { TMDBResult, searchTMDB, fetchDetails } from '../api/tmdb';
+import { TMDBResult, searchTMDB, fetchDetails, findByTVDB } from '../api/tmdb';
+import { buildRowKey } from '../utils/rowKey';
 import { scrapeData } from '../api/scrape';
 
 interface MatchItem {
@@ -18,6 +19,7 @@ interface MatchItem {
     isIdMode?: boolean;
     scrapeSeriesBaseUrl?: string;
     scrapeUrl?: string;
+    tvdbId?: string;
 }
 
 export function MatchContainer() {
@@ -53,29 +55,9 @@ export function MatchContainer() {
             if (!currentMapping || (!currentMapping.title && !currentMapping.scrapeUrlColumn)) return;
 
             file.rows.forEach(row => {
-                let t = currentMapping.title ? row[currentMapping.title] : row[currentMapping.scrapeUrlColumn!];
-                if (!t || typeof t !== 'string') return;
-                t = t.trim();
-                if (!t) return;
-
-                let isTv = false;
-                if (currentMapping.hasSeries && !currentMapping.hasMovies) {
-                    isTv = true;
-                } else if (currentMapping.hasSeries && currentMapping.hasMovies) {
-                    isTv = !!(
-                        (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(String(row[currentMapping.type]))) ||
-                        (currentMapping.season && row[currentMapping.season]) ||
-                        (currentMapping.episode && row[currentMapping.episode])
-                    );
-                }
-
-                const typeStr = isTv ? 'tv' : 'movie';
-
-                let y = currentMapping.year ? row[currentMapping.year] : undefined;
-                if (y && typeof y === 'number') y = String(y);
-                if (y && typeof y === 'string') y = y.trim();
-
-                const key = y ? `${t}::${y}::${typeStr}` : `${t}::${typeStr}`;
+                const info = buildRowKey(row, currentMapping);
+                if (!info) return;
+                const { key, title: t, year: y, type: typeStr, tvdbId } = info;
 
                 let scrapeUrl = '';
                 if (currentMapping.scrapeUrlColumn && row[currentMapping.scrapeUrlColumn]) {
@@ -95,7 +77,8 @@ export function MatchContainer() {
                         scrapeSynopsisSelector: currentMapping.scrapeSynopsisSelector,
                         isIdMode: currentMapping.isIdMode,
                         scrapeSeriesBaseUrl: currentMapping.scrapeSeriesBaseUrl,
-                        scrapeUrl: scrapeUrl
+                        scrapeUrl: scrapeUrl,
+                        tvdbId
                     });
                 }
             });
@@ -176,6 +159,16 @@ export function MatchContainer() {
                         return; // exit the promise mapping early, avoiding TMDB fetch
                     }
 
+                    // A TheTVDB id resolves to an exact TMDB entry: no doubt, confirm it directly
+                    if (item.tvdbId && !customQueries[item.uniqueKey]) {
+                        const found = await findByTVDB(item.tvdbId);
+                        if (found.length === 1) {
+                            setResultsCache(prev => ({ ...prev, [item.uniqueKey]: found }));
+                            confirmMatch(item.uniqueKey, found[0]);
+                            return;
+                        }
+                    }
+
                     const results = await searchTMDB(searchTitle, searchType, searchYear);
 
                     setResultsCache(prev => ({ ...prev, [item.uniqueKey]: results }));
@@ -239,28 +232,10 @@ export function MatchContainer() {
                 const category = (currentMapping.category || file.category || '').toLowerCase();
 
                 file.rows.forEach(row => {
-                    const titleRaw = currentMapping.title ? row[currentMapping.title] : row[currentMapping.scrapeUrlColumn!];
-                    const titleStr = typeof titleRaw === 'string' ? titleRaw.trim() : '';
-                    if (!titleStr) return;
-
-                    let isTv = false;
-                    if (currentMapping.hasSeries && !currentMapping.hasMovies) {
-                        isTv = true;
-                    } else if (currentMapping.hasSeries && currentMapping.hasMovies) {
-                        isTv = !!(
-                            (currentMapping.type && row[currentMapping.type] && currentMapping.typeValues?.series.includes(String(row[currentMapping.type]))) ||
-                            (currentMapping.season && row[currentMapping.season]) ||
-                            (currentMapping.episode && row[currentMapping.episode])
-                        );
-                    }
-
-                    const typeStr = isTv ? 'tv' : 'movie';
-
-                    let y = currentMapping.year ? row[currentMapping.year] : undefined;
-                    if (y && typeof y === 'number') y = String(y);
-                    if (y && typeof y === 'string') y = y.trim();
-
-                    const key = y ? `${titleStr}::${y}::${typeStr}` : `${titleStr}::${typeStr}`;
+                    const info = buildRowKey(row, currentMapping);
+                    if (!info) return;
+                    const { key } = info;
+                    const isTv = info.type === 'tv';
 
                     const confirmed = confirmedMap[key];
                     if (!confirmed) return;
@@ -283,14 +258,15 @@ export function MatchContainer() {
                     const tmdbId = confirmed.id;
                     const type = isTv ? 'tv' : 'movie';
 
-                    // Deduplicate identical combinations of movie, date, and exact list type
-                    const dedupeKey = `${tmdbId}-${category}-${dateStr}`;
+                    const seasonNumber = (isTv && currentMapping.season) ? parseInt(row[currentMapping.season], 10) || '' : '';
+                    const episodeNumber = (isTv && currentMapping.episode) ? parseInt(row[currentMapping.episode], 10) || '' : '';
+
+                    // Deduplicate identical combinations of title, episode, date, and exact list type
+                    const dedupeKey = `${tmdbId}-${type}-${seasonNumber}-${episodeNumber}-${category}-${dateStr}`;
                     if (exportDedupe.has(dedupeKey)) return;
                     exportDedupe.add(dedupeKey);
 
                     const title = confirmed.name || confirmed.title;
-                    const seasonNumber = (isTv && currentMapping.season) ? parseInt(row[currentMapping.season], 10) || '' : '';
-                    const episodeNumber = (isTv && currentMapping.episode) ? parseInt(row[currentMapping.episode], 10) || '' : '';
                     const posterPath = confirmed.poster_path || '';
                     const releaseDate = confirmed.release_date || confirmed.first_air_date || '';
                     const runtime = '';
