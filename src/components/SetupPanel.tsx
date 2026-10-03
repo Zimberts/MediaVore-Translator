@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { parseByFilename, parseZipContent, autoSuggestMapping, readZipEntries } from '../utils/parsers';
+import { parseByFilename, parseZipEntries, autoSuggestMapping, readZipEntries, ZipPasswordError } from '../utils/parsers';
 import { convertTVTimeExport, isTVTimeExport, RawFile } from '../importers/tvtime';
 import { defaultFieldMapping } from '../utils/storage';
 import { FieldMapperModal } from './FieldMapperModal';
@@ -19,18 +19,32 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
         reader.readAsText(file);
     });
 
+    const isZip = (file: File) => /\.(zip|mdv)$/i.test(file.name);
+
+    // Read a ZIP once, asking for its password when it is encrypted (e.g. the TV Time export)
+    const readZip = async (file: File): Promise<RawFile[]> => {
+        let password: string | undefined;
+        for (;;) {
+            try {
+                return await readZipEntries(file, password);
+            } catch (err) {
+                if (!(err instanceof ZipPasswordError)) throw err;
+                const answer = window.prompt(err.wrongPassword
+                    ? `Wrong password for ${file.name}. Try again:`
+                    : `${file.name} is password-protected. Enter its password:`);
+                if (!answer) throw new Error(`${file.name} is password-protected and no password was given.`);
+                password = answer;
+            }
+        }
+    };
+
     // A TV Time export is converted as a whole into pre-mapped datasets
-    const tryImportTVTime = async (files: File[]): Promise<boolean> => {
+    const tryImportTVTime = async (files: File[], zipEntries: Map<File, RawFile[]>): Promise<boolean> => {
         const raw: RawFile[] = [];
         for (const file of files) {
-            const lower = file.name.toLowerCase();
-            if (lower.endsWith('.zip')) {
-                try {
-                    raw.push(...await readZipEntries(file));
-                } catch (e) {
-                    // encrypted or invalid archive: let the generic path report it
-                }
-            } else if (lower.endsWith('.csv')) {
+            if (zipEntries.has(file)) {
+                raw.push(...zipEntries.get(file)!);
+            } else if (file.name.toLowerCase().endsWith('.csv')) {
                 raw.push({ name: file.name, text: await readFileText(file) });
             }
         }
@@ -53,20 +67,33 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
+        // Allow selecting the same file again (e.g. after cancelling the password prompt)
+        e.target.value = '';
         if (files.length === 0) return;
 
         setError(null);
         setNotice(null);
 
-        if (await tryImportTVTime(files)) return;
+        const zipEntries = new Map<File, RawFile[]>();
+        const zipErrors: string[] = [];
+        for (const file of files.filter(isZip)) {
+            try {
+                zipEntries.set(file, await readZip(file));
+            } catch (err: any) {
+                zipErrors.push(err.message || `Failed to read ${file.name}`);
+            }
+        }
+
+        if (await tryImportTVTime(files, zipEntries)) return;
 
         const newParsedFiles: typeof parsedFiles = [];
         let hasError = false;
 
         for (const file of files) {
             try {
-                if (file.name.toLowerCase().endsWith('.zip') || file.name.toLowerCase().endsWith('.mdv')) {
-                    const zipFiles = await parseZipContent(file);
+                if (isZip(file)) {
+                    if (!zipEntries.has(file)) continue;
+                    const zipFiles = parseZipEntries(zipEntries.get(file)!);
                     for (const zf of zipFiles) {
                         newParsedFiles.push({
                             fileName: `${file.name}/${zf.fileName}`,
@@ -97,9 +124,10 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
         }
 
         if (newParsedFiles.length === 0) {
-            setError('No valid data found in selected files.');
+            setError(zipErrors.length > 0 ? zipErrors.join(' ') : 'No valid data found in selected files.');
         } else {
-            if (hasError) setError('Some files failed to parse.');
+            if (zipErrors.length > 0) setError(zipErrors.join(' '));
+            else if (hasError) setError('Some files failed to parse.');
 
             // Try to set some default mappings using common strategies for new files!
             const addedFiles = [...parsedFiles, ...newParsedFiles];

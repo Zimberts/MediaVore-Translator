@@ -103,7 +103,7 @@ describe('TV Time importer', () => {
     const zip = new JSZip();
     files.forEach(f => zip.file(f.name, f.text));
     const blob = await zip.generateAsync({ type: 'uint8array' });
-    const entries = await readZipEntries(blob as any);
+    const entries = await readZipEntries(blob);
     expect(isTVTimeExport(entries.map(e => e.name))).toBe(true);
     expect(convertTVTimeExport(entries)).toHaveLength(4);
   });

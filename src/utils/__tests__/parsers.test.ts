@@ -1,5 +1,6 @@
-import { parseCSV, parseJSON, parseYAML, parseByFilename, parseZipContent } from '../parsers';
+import { parseCSV, parseJSON, parseYAML, parseByFilename, parseZipContent, readZipEntries, ZipPasswordError } from '../parsers';
 import JSZip from 'jszip';
+import { Uint8ArrayReader, Uint8ArrayWriter, ZipWriter } from '@zip.js/zip.js';
 
 describe('Parsers', () => {
   it('should parse CSV correctly', () => {
@@ -60,12 +61,10 @@ describe('Parsers', () => {
     zip.file('test1.csv', 'Name,Type\nMovie1,movie');
     zip.file('test2.json', JSON.stringify([{ Name: 'Movie2', Type: 'movie' }]));
 
-    // JSZip generateAsync can create various formats. Using Blob for browsers
-    // In node environment, we can generate a uint8array and treat it as a Blob
+    // jsdom's Blob has no arrayBuffer(), so pass the raw bytes (browsers pass the File/Blob)
     const content = await zip.generateAsync({ type: 'uint8array' });
-    const blob = new Blob([content], { type: 'application/zip' });
 
-    const results = await parseZipContent(blob);
+    const results = await parseZipContent(content);
     expect(results).toHaveLength(2);
 
     const csvResult = results.find(r => r.fileName === 'test1.csv');
@@ -77,5 +76,31 @@ describe('Parsers', () => {
     expect(jsonResult).toBeDefined();
     expect(jsonResult?.rows[0].Name).toBe('Movie2');
     expect(jsonResult?.headers).toContain('Name');
+  });
+
+  describe('password-protected ZIP', () => {
+    const makeEncryptedZip = async () => {
+      const writer = new ZipWriter(new Uint8ArrayWriter(), { password: 's3cr3t', zipCrypto: true });
+      await writer.add('data.csv', new Uint8ArrayReader(new TextEncoder().encode('Name,Type\nMovie1,movie')));
+      return writer.close();
+    };
+
+    it('asks for a password when none is given', async () => {
+      const zip = await makeEncryptedZip();
+      await expect(readZipEntries(zip)).rejects.toMatchObject({ name: 'ZipPasswordError', wrongPassword: false });
+    });
+
+    it('reports a wrong password', async () => {
+      const zip = await makeEncryptedZip();
+      const err = await readZipEntries(zip, 'nope').catch(e => e);
+      expect(err).toBeInstanceOf(ZipPasswordError);
+      expect(err.wrongPassword).toBe(true);
+    });
+
+    it('reads the archive with the right password', async () => {
+      const zip = await makeEncryptedZip();
+      const results = await parseZipContent(zip, 's3cr3t');
+      expect(results[0].rows[0].Name).toBe('Movie1');
+    });
   });
 });
