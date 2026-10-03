@@ -36,6 +36,7 @@ An interactive sandbox iframe tool allowing users to visually set up DOM queries
 Step 1 of the app. Handles ingesting uploaded file objects via Dropzone logic.
 - Renders the column mapping dropdowns.
 - Differentiates generic text imports from explicit ID/URL mode imports.
+- Detects a TV Time export among the selected files and replaces it with pre-mapped datasets (see [TV Time Import](tvtime-import.md)).
 - Conditionally spawns `FieldMapperModal` or `ScrapeVisualizerModal` when advanced configurations are requested.
 
 ## `FieldMapperModal.tsx` & `SettingsModal.tsx`
