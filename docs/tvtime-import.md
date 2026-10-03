@@ -28,6 +28,7 @@ Notes:
 - TV Time timestamps (`YYYY-MM-DD HH:MM:SS`) are UTC; they are converted to ISO 8601 with a `Z` suffix.
 - Series names that carry a disambiguation year (`Doctor Who (2005)`) are split into `title` and `year`.
 - Movie years come from `release_date`.
+- Some records have no name (onboarding bulk imports). Episodes borrow the series name from another record with the same `s_id` (or `TVDB #<id>`, matching relies on the id anyway); movies rebuild a lowercase title from `alpha_range_key` (`watch-alpha-dumbo` → `dumbo`).
 - Everything else in the export (devices, IPs, tokens, notifications, comments, recommendations) is ignored.
 
 ## TMDB matching
