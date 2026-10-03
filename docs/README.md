@@ -12,3 +12,4 @@ When adding or modifying features, you MUST update the documentation in this `do
 - [Architecture & State Management](architecture.md) - High-level overview of the app flow, React Contexts, and major data structures.
 - [API & Services](api.md) - Details on TMDB integration, web scraping behavior, CORS proxies, and data fetching logic.
 - [Component Reference](components.md) - Breakdown of the React UI components, page layouts, and interactive modals.
+- [TV Time Import](tvtime-import.md) - How the TV Time personal data export is detected, normalized, and matched against TMDB.

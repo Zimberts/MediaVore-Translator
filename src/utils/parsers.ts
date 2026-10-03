@@ -1,5 +1,8 @@
-import JSZip from 'jszip';
+import { BlobReader, Uint8ArrayReader, Uint8ArrayWriter, ZipReader, configure } from '@zip.js/zip.js';
 import { FieldMapping } from './storage';
+
+// Archives are small: decompress on the main thread rather than in web workers
+configure({ useWebWorkers: false });
 
 // Lightweight format parsers
 
@@ -190,29 +193,57 @@ export function parseByFilename(name: string, text: string): ParsedCSV[] {
   return [{ headers: yRows.length > 0 ? Object.keys(yRows[0]) : [], rows: yRows }];
 }
 
-export async function parseZipContent(file: File | Blob): Promise<{ fileName: string, headers: string[], rows: Record<string, any>[] }[]> {
-  const zip = new JSZip();
-  const loadedZip = await zip.loadAsync(file);
+export class ZipPasswordError extends Error {
+  constructor(public readonly wrongPassword: boolean) {
+    super(wrongPassword ? 'Invalid ZIP password' : 'This ZIP archive is password-protected');
+    this.name = 'ZipPasswordError';
+  }
+}
+
+// Read every file of a ZIP archive as text. Encrypted archives (ZipCrypto/AES) need a password.
+export async function readZipEntries(file: Blob | Uint8Array, password?: string): Promise<{ name: string, text: string }[]> {
+  const reader = new ZipReader(ArrayBuffer.isView(file) ? new Uint8ArrayReader(file as Uint8Array) : new BlobReader(file as Blob));
+  try {
+    const entries: { name: string, text: string }[] = [];
+    for (const entry of await reader.getEntries()) {
+      if (entry.directory) continue;
+      if (entry.encrypted && !password) throw new ZipPasswordError(false);
+      try {
+        const bytes = await entry.getData(new Uint8ArrayWriter(), { password });
+        entries.push({ name: entry.filename, text: new TextDecoder('utf-8').decode(bytes) });
+      } catch (e: any) {
+        if (entry.encrypted && /password/i.test(String(e?.message))) throw new ZipPasswordError(true);
+        // ignore unreadable entries
+      }
+    }
+    return entries;
+  } finally {
+    await reader.close();
+  }
+}
+
+export function parseZipEntries(entries: { name: string, text: string }[]): { fileName: string, headers: string[], rows: Record<string, any>[] }[] {
   const results: { fileName: string, headers: string[], rows: Record<string, any>[] }[] = [];
 
-  for (const [path, zipEntry] of Object.entries(loadedZip.files)) {
-    if (!zipEntry.dir) {
-      try {
-        const text = await zipEntry.async('text');
-        const blocks = parseByFilename(zipEntry.name, text);
-        for (let i = 0; i < blocks.length; i++) {
-          const { headers, rows } = blocks[i];
-          if (rows && rows.length > 0) {
-            const name = blocks.length > 1 ? `${path} (${i + 1})` : path;
-            results.push({ fileName: name, headers, rows });
-          }
+  for (const { name: path, text } of entries) {
+    try {
+      const blocks = parseByFilename(path, text);
+      for (let i = 0; i < blocks.length; i++) {
+        const { headers, rows } = blocks[i];
+        if (rows && rows.length > 0) {
+          const name = blocks.length > 1 ? `${path} (${i + 1})` : path;
+          results.push({ fileName: name, headers, rows });
         }
-      } catch (e) {
-        // ignore parsing errors and proceed thoroughly
       }
+    } catch (e) {
+      // ignore parsing errors and proceed thoroughly
     }
   }
   return results;
+}
+
+export async function parseZipContent(file: Blob | Uint8Array, password?: string) {
+  return parseZipEntries(await readZipEntries(file, password));
 }
 
 export function autoSuggestMapping(

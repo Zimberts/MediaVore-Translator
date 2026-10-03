@@ -30,6 +30,7 @@ export interface FieldMapping {
   synopsis?: string;
   scrapePosterSelector?: string;
   scrapeSynopsisSelector?: string;
+  tvdbId?: string;
 }
 
 export const defaultFieldMapping: FieldMapping = {

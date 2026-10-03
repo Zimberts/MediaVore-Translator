@@ -8,6 +8,7 @@ Manages all requests natively against the `api.themoviedb.org/3/search/` endpoin
 
 - **Storage Cached Requests:** Searches are wrapped in a fast `utils/storage.ts` logic layer. Before a network request fires, it checks `tmdb_cache_[type]_[query]_[year]`. If present, it instantaneously resolves it directly from local memory without consuming TMDB rate limits.
 - **Data Normalization:** Movie objects and TV object structures from the API differ natively. The `normalizeResult` helper unifies `release_date`, `first_air_date`, `title`, and `name` fields so `TitleCard.tsx` can consume them generically as a standard typed `TMDBResult`.
+- **External id lookup:** `findByTVDB(tvdbId)` calls `/find/{id}?external_source=tvdb_id` and returns the `tv_results` as `TMDBResult[]` (cached under `find:tvdb:<id>`). Used for TV Time imports, whose series ids are TheTVDB ids.
 - **Search Types:** Dynamically queries `search/movie` or `search/tv` based on user-provided or auto-detected configurations, passing `include_adult=false`, `language=en-US`, and optionally `primary_release_year` / `first_air_date_year`.
 
 ## `src/api/scrape.ts`

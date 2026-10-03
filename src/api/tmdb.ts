@@ -130,6 +130,24 @@ export async function searchTMDB(query: string, type: string, year?: string): Pr
   return results;
 }
 
+// Resolve a TheTVDB series id to its TMDB tv entry (exact match, no ambiguity)
+export async function findByTVDB(tvdbId: string | number): Promise<TMDBResult[]> {
+  const cacheKey = `find:tvdb:${tvdbId}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+  const data = await tmdbFetch(`/find/${tvdbId}`, { external_source: 'tvdb_id', language: 'en-US' });
+  const results: TMDBResult[] = (data && data.tv_results) ? data.tv_results.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    poster_path: r.poster_path,
+    release_date: r.first_air_date,
+    overview: r.overview,
+    raw: r
+  })) : [];
+  cacheSet(cacheKey, results);
+  return results;
+}
+
 export async function fetchDetails(tmdbId: number, mediaType: string = 'movie') {
   const kind = mediaType === 'tv' ? 'tv' : 'movie';
   const cacheKey = `details:${kind}:${tmdbId}`;

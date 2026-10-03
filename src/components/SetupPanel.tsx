@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { parseByFilename, parseZipContent, autoSuggestMapping } from '../utils/parsers';
+import { parseByFilename, parseZipEntries, autoSuggestMapping, readZipEntries, ZipPasswordError } from '../utils/parsers';
+import { convertTVTimeExport, isTVTimeExport, RawFile } from '../importers/tvtime';
 import { defaultFieldMapping } from '../utils/storage';
 import { FieldMapperModal } from './FieldMapperModal';
 
@@ -9,20 +10,90 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [mappingFile, setMappingFile] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
+
+    const readFileText = (file: File) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => resolve(evt.target?.result as string);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsText(file);
+    });
+
+    const isZip = (file: File) => /\.(zip|mdv)$/i.test(file.name);
+
+    // Read a ZIP once, asking for its password when it is encrypted (e.g. the TV Time export)
+    const readZip = async (file: File): Promise<RawFile[]> => {
+        let password: string | undefined;
+        for (;;) {
+            try {
+                return await readZipEntries(file, password);
+            } catch (err) {
+                if (!(err instanceof ZipPasswordError)) throw err;
+                const answer = window.prompt(err.wrongPassword
+                    ? `Wrong password for ${file.name}. Try again:`
+                    : `${file.name} is password-protected. Enter its password:`);
+                if (!answer) throw new Error(`${file.name} is password-protected and no password was given.`);
+                password = answer;
+            }
+        }
+    };
+
+    // A TV Time export is converted as a whole into pre-mapped datasets
+    const tryImportTVTime = async (files: File[], zipEntries: Map<File, RawFile[]>): Promise<boolean> => {
+        const raw: RawFile[] = [];
+        for (const file of files) {
+            if (zipEntries.has(file)) {
+                raw.push(...zipEntries.get(file)!);
+            } else if (file.name.toLowerCase().endsWith('.csv')) {
+                raw.push({ name: file.name, text: await readFileText(file) });
+            }
+        }
+        if (!isTVTimeExport(raw.map(f => f.name))) return false;
+
+        const datasets = convertTVTimeExport(raw);
+        if (datasets.length === 0) {
+            setError('TV Time export detected, but no viewing history was found in it.');
+            return true;
+        }
+        const names = new Set(datasets.map(d => d.fileName));
+        for (const d of datasets) updateFileMapping(d.fileName, d.mapping);
+        setParsedFiles([
+            ...parsedFiles.filter(f => !names.has(f.fileName)),
+            ...datasets.map(({ fileName, headers, rows, category }) => ({ fileName, headers, rows, category })),
+        ]);
+        setNotice(`TV Time export detected: ${datasets.map(d => `${d.fileName.split('/').pop()} (${d.rows.length})`).join(', ')}. Mappings are preset.`);
+        return true;
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
+        // Allow selecting the same file again (e.g. after cancelling the password prompt)
+        e.target.value = '';
         if (files.length === 0) return;
 
         setError(null);
+        setNotice(null);
+
+        const zipEntries = new Map<File, RawFile[]>();
+        const zipErrors: string[] = [];
+        for (const file of files.filter(isZip)) {
+            try {
+                zipEntries.set(file, await readZip(file));
+            } catch (err: any) {
+                zipErrors.push(err.message || `Failed to read ${file.name}`);
+            }
+        }
+
+        if (await tryImportTVTime(files, zipEntries)) return;
 
         const newParsedFiles: typeof parsedFiles = [];
         let hasError = false;
 
         for (const file of files) {
             try {
-                if (file.name.toLowerCase().endsWith('.zip') || file.name.toLowerCase().endsWith('.mdv')) {
-                    const zipFiles = await parseZipContent(file);
+                if (isZip(file)) {
+                    if (!zipEntries.has(file)) continue;
+                    const zipFiles = parseZipEntries(zipEntries.get(file)!);
                     for (const zf of zipFiles) {
                         newParsedFiles.push({
                             fileName: `${file.name}/${zf.fileName}`,
@@ -32,12 +103,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                         });
                     }
                 } else {
-                    const text = await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = (evt) => resolve(evt.target?.result as string);
-                        reader.onerror = () => reject(new Error('Failed to read file'));
-                        reader.readAsText(file);
-                    });
+                    const text = await readFileText(file);
 
                     const blocks = parseByFilename(file.name, text);
                     blocks.forEach((block, i) => {
@@ -58,9 +124,10 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
         }
 
         if (newParsedFiles.length === 0) {
-            setError('No valid data found in selected files.');
+            setError(zipErrors.length > 0 ? zipErrors.join(' ') : 'No valid data found in selected files.');
         } else {
-            if (hasError) setError('Some files failed to parse.');
+            if (zipErrors.length > 0) setError(zipErrors.join(' '));
+            else if (hasError) setError('Some files failed to parse.');
 
             // Try to set some default mappings using common strategies for new files!
             const addedFiles = [...parsedFiles, ...newParsedFiles];
@@ -156,6 +223,7 @@ export function SetupPanel({ onFinish }: { onFinish: () => void }) {
                                 </ul>
                             </div>
                         )}
+                        {notice && <p className="text-green-700 text-sm mt-2">{notice}</p>}
                         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
                     </div>
                 </div>
